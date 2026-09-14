@@ -1,0 +1,49 @@
+import { Instagram, Target } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/icons';
+import { LINKS } from '@/lib/links';
+
+const SOCIAL = [
+  {
+    href: LINKS.whatsapp,
+    label: 'Unirse al grupo de WhatsApp',
+    Icon: WhatsAppIcon,
+  },
+  {
+    href: LINKS.instagram,
+    label: 'Instagram de Galadhrym',
+    Icon: Instagram,
+  },
+];
+
+export function SiteFooter() {
+  return (
+    <footer className="border-t bg-secondary/40">
+      <div className="container flex flex-col items-center justify-between gap-6 py-10 sm:flex-row">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Target className="h-5 w-5 text-primary" aria-hidden="true" />
+          Galadhrym — Asociación de Arquería
+        </div>
+
+        <div className="flex items-center gap-1">
+          {SOCIAL.map(({ href, label, Icon }) => (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={label}
+              title={label}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Icon className="h-5 w-5" />
+            </a>
+          ))}
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          © {new Date().getFullYear()} Galadhrym
+        </p>
+      </div>
+    </footer>
+  );
+}

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1A1310" />
+
+    <!--
+      SEO base. Estos tags van en el HTML estático a propósito: los crawlers
+      sociales (WhatsApp, Facebook, LinkedIn) NO ejecutan JavaScript, así que
+      solo ven lo que hay aquí. React los sobreescribe por ruta para Google,
+      que sí ejecuta JS (ver src/components/Seo.tsx).
+    -->
+    <title>Galadhrym — Arquería Tradicional</title>
+    <meta
+      name="description"
+      content="Asociación de arquería tradicional Galadhrym: escuela para principiantes, entrenamiento y torneos de tiro con arco. Súmate al club."
+    />
+    <link rel="canonical" href="https://galadhrym.cl/" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph (WhatsApp, Facebook, LinkedIn) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Galadhrym" />
+    <meta property="og:locale" content="es_CL" />
+    <meta property="og:title" content="Galadhrym — Arquería Tradicional" />
+    <meta
+      property="og:description"
+      content="Escuela, entrenamiento y torneos de tiro con arco tradicional."
+    />
+    <meta property="og:url" content="https://galadhrym.cl/" />
+    <meta property="og:image" content="https://galadhrym.cl/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Galadhrym, arquería tradicional" />
+
+    <!-- Twitter/X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Galadhrym — Arquería Tradicional" />
+    <meta
+      name="twitter:description"
+      content="Escuela, entrenamiento y torneos de tiro con arco tradicional."
+    />
+    <meta name="twitter:image" content="https://galadhrym.cl/og-image.jpg" />
+
+    <!-- Datos estructurados: ayudan a Google a entender qué es el club -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SportsOrganization",
+        "name": "Galadhrym",
+        "alternateName": "Galadhrym Arquería Tradicional",
+        "description": "Asociación de arquería tradicional: escuela, entrenamiento y torneos de tiro con arco.",
+        "url": "https://galadhrym.cl/",
+        "sport": "Tiro con arco",
+        "areaServed": { "@type": "City", "name": "Temuco" },
+        "sameAs": ["https://www.instagram.com/galadhrym_arqueria/"]
+      }
+    </script>
+    <script>
+      // Aplica el tema ANTES de pintar: sin esto, un usuario con tema oscuro
+      // ve un destello blanco mientras carga React.
+      (function () {
+        try {
+          var stored = localStorage.getItem('abma-theme');
+          var theme = stored ? JSON.parse(stored).state.theme : 'system';
+          var dark =
+            theme === 'dark' ||
+            (theme === 'system' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (e) {
+          /* si localStorage falla, se queda en claro */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

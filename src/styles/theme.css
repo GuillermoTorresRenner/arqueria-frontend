@@ -1,0 +1,178 @@
+/**
+ * Tema Galadhrym — única fuente de verdad de los colores.
+ *
+ * La paleta sale del afiche de Instagram (@galadhrym_arqueria): rojo bermellón
+ * del emblema, pergamino envejecido, sepia de los bordes quemados y tinta negra.
+ *
+ * Todos los pares de texto/fondo cumplen WCAG AA (≥4.5:1) en ambos temas.
+ * Si cambias un valor aquí, revalida el contraste antes de darlo por bueno.
+ *
+ * No escribas colores literales en los componentes: usa siempre estos tokens
+ * a través de las clases de Tailwind (bg-background, text-muted-foreground, …).
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ---- Superficies ---- */
+    --background: 40 60% 95%;
+    --foreground: 27 32% 9%;
+
+    --card: 40 67% 98%;
+    --card-foreground: 27 32% 9%;
+
+    --popover: 40 67% 98%;
+    --popover-foreground: 27 32% 9%;
+
+    /* ---- Rojo del emblema ---- */
+    --primary: 357 70% 39%;
+    --primary-foreground: 34 100% 96%;
+
+    /* ---- Pergamino ---- */
+    --secondary: 40 47% 86%;
+    --secondary-foreground: 30 43% 16%;
+
+    --muted: 40 47% 85%;
+    --muted-foreground: 32 31% 32%;
+
+    /* ---- Sepia de los bordes ---- */
+    --accent: 29 46% 37%;
+    --accent-foreground: 34 100% 96%;
+
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 34 100% 96%;
+
+    --border: 39 40% 76%;
+    --input: 39 40% 76%;
+    --ring: 357 70% 39%;
+
+    --radius: 0.5rem;
+
+    /* ---- Marca (no cambian entre temas) ---- */
+    --brand-vermilion: 357 66% 45%;
+    --brand-parchment: 40 63% 81%;
+    --brand-sepia: 29 46% 37%;
+    --brand-ink: 18 24% 8%;
+  }
+
+  .dark {
+    /* Noche sepia, no gris neutro: conserva la calidez del pergamino */
+    --background: 30 27% 7%;
+    --foreground: 37 46% 89%;
+
+    --card: 32 32% 9%;
+    --card-foreground: 37 46% 89%;
+
+    --popover: 32 32% 9%;
+    --popover-foreground: 37 46% 89%;
+
+    /* Rojo aclarado para que brille sobre fondo oscuro */
+    --primary: 358 73% 59%;
+    --primary-foreground: 30 54% 6%;
+
+    --secondary: 33 30% 13%;
+    --secondary-foreground: 37 46% 89%;
+
+    --muted: 33 30% 13%;
+    --muted-foreground: 33 26% 63%;
+
+    /* Dorado del pergamino iluminado */
+    --accent: 33 66% 58%;
+    --accent-foreground: 30 54% 6%;
+
+    --destructive: 358 65% 55%;
+    --destructive-foreground: 34 100% 96%;
+
+    --border: 33 29% 18%;
+    --input: 33 29% 18%;
+    --ring: 358 73% 59%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* El cambio de tema no debe parpadear ni arrastrar transiciones */
+  .theme-switching * {
+    transition: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /**
+   * Clases compuestas reutilizables. Viven aquí, no repartidas por los
+   * componentes, para que un cambio de aspecto se haga en un solo sitio.
+   */
+
+  /* Superficie de papel: fondo de las secciones destacadas */
+  .surface-parchment {
+    @apply bg-secondary text-secondary-foreground;
+  }
+
+  /* Franja oscura del hero, con textura sutil de pergamino */
+  .surface-hero {
+    @apply relative bg-[hsl(var(--brand-ink))] text-[hsl(40_60%_95%)];
+  }
+
+  /* Filete rojo bajo los títulos, como en el afiche */
+  .rule-vermilion::after {
+    content: '';
+    @apply mt-3 block h-[3px] w-16 rounded-full bg-primary;
+  }
+
+  /* Tabla de resultados */
+  .table-base {
+    @apply w-full text-sm;
+  }
+  .table-head {
+    @apply bg-secondary/60 text-left;
+  }
+  .table-th {
+    @apply px-4 py-3 font-medium;
+  }
+  .table-td {
+    @apply px-4 py-3;
+  }
+  .table-row {
+    @apply transition-colors hover:bg-secondary/40;
+  }
+  .table-num {
+    @apply tabular-nums text-muted-foreground;
+  }
+
+  /* Contenedores de estado */
+  .state-empty {
+    @apply rounded-lg border border-dashed p-10 text-center text-muted-foreground;
+  }
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-muted;
+  }
+
+  /* Secciones de la landing */
+  .section {
+    @apply container py-16 md:py-20;
+  }
+  .section-title {
+    @apply text-3xl font-bold tracking-tight md:text-4xl;
+  }
+  .section-lead {
+    @apply mt-2 text-muted-foreground;
+  }
+}

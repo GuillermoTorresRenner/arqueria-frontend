@@ -1,0 +1,9 @@
+# Galadhrym — https://galadhrym.cl
+User-agent: *
+Allow: /
+
+# Zonas privadas: no tiene sentido indexarlas
+Disallow: /admin
+Disallow: /login
+
+Sitemap: https://galadhrym.cl/sitemap.xml

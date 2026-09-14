@@ -1,0 +1,170 @@
+export type Role = 'ADMIN' | 'JUDGE' | 'MEMBER';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  surname: string | null;
+  role: Role;
+  avatar: string | null;
+  isActive: boolean;
+}
+
+// ---------- Contenido (CMS) ----------
+
+export type BlockType =
+  | 'HERO'
+  | 'RICH_TEXT'
+  | 'GALLERY'
+  | 'CARDS'
+  | 'CTA'
+  | 'FAQ';
+
+export interface Block {
+  id: string;
+  type: BlockType;
+  order?: number;
+  isActive?: boolean;
+  data: Record<string, unknown>;
+}
+
+export interface Section {
+  id?: string;
+  key: string;
+  title: string;
+  order?: number;
+  isActive?: boolean;
+  blocks: Block[];
+}
+
+// Formas concretas de `data` según el tipo de bloque.
+export interface HeroData {
+  title?: string;
+  subtitle?: string;
+  text?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  /// Nombre del icono del botón (p. ej. "whatsapp"); opcional.
+  ctaIcon?: string;
+  image?: string | null;
+}
+
+export interface RichTextData {
+  title?: string;
+  html?: string;
+}
+
+export interface CardItem {
+  title?: string;
+  text?: string;
+  icon?: string;
+}
+
+export interface CardsData {
+  title?: string;
+  items?: CardItem[];
+}
+
+export interface CtaData {
+  title?: string;
+  text?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  /// Nombre del icono del botón (p. ej. "whatsapp"); opcional.
+  ctaIcon?: string;
+}
+
+export interface GalleryData {
+  title?: string;
+  images?: { src: string; alt?: string }[];
+}
+
+export interface FaqData {
+  title?: string;
+  items?: { question: string; answer: string }[];
+}
+
+// ---------- Socios ----------
+
+export type MemberStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+export type CategoryKind = 'DIVISION' | 'AGE' | 'GENDER';
+
+export interface Category {
+  id: string;
+  kind: CategoryKind;
+  code: string;
+  label: string;
+  minAge?: number | null;
+  maxAge?: number | null;
+  isActive: boolean;
+}
+
+export interface Member {
+  id: string;
+  memberNumber: number;
+  documentId: string | null;
+  phone: string | null;
+  status: MemberStatus;
+  membershipEnd: string | null;
+  user: Pick<User, 'id' | 'name' | 'surname' | 'email' | 'avatar' | 'isActive'>;
+  categories: { category: Category }[];
+}
+
+// ---------- Torneos ----------
+
+export type TournamentStatus =
+  | 'DRAFT'
+  | 'REGISTRATION_OPEN'
+  | 'IN_PROGRESS'
+  | 'FINISHED'
+  | 'CANCELLED';
+
+export interface ScoringZone {
+  label: string;
+  value: number;
+  isInner?: boolean;
+}
+
+export interface ScoringFormat {
+  id: string;
+  name: string;
+  description: string | null;
+  arrowsPerEnd: number;
+  endsPerRound: number;
+  maxPerArrow: number;
+  zones: ScoringZone[];
+  isActive: boolean;
+}
+
+export interface Tournament {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  location: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  status: TournamentStatus;
+  isPublic: boolean;
+  scoringFormat?: ScoringFormat;
+  _count?: { registrations: number; groups?: number; rounds?: number };
+}
+
+export interface LeaderboardEntry {
+  position: number;
+  memberId: string;
+  memberNumber: number;
+  name: string;
+  avatar: string | null;
+  categories: string[];
+  total: number;
+  innerTens: number;
+  tens: number;
+  endsShot: number;
+}
+
+export interface Leaderboard {
+  tournamentId: string;
+  updatedAt: string;
+  entries: LeaderboardEntry[];
+}

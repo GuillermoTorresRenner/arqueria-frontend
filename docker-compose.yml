@@ -1,0 +1,16 @@
+name: 'abma_prod_front'
+
+services:
+  frontend:
+    image: 'lanek/abma-frontend:latest'
+    container_name: '${PREFIX}_frontend'
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
+    name: web
