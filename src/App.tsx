@@ -43,8 +43,11 @@ const UsersAdminPage = lazy(() =>
   })),
 );
 
-const WelcomePage = lazy(() =>
-  import('@/pages/WelcomePage').then((m) => ({ default: m.WelcomePage })),
+const SetPasswordPage = lazy(() =>
+  import('@/pages/SetPasswordPage').then((m) => ({ default: m.SetPasswordPage })),
+);
+const ForgotPasswordPage = lazy(() =>
+  import('@/pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
 );
 const MemberAreaPage = lazy(() =>
   import('@/pages/MemberAreaPage').then((m) => ({ default: m.MemberAreaPage })),
@@ -79,7 +82,10 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="torneos" element={<TournamentsPage />} />
               <Route path="torneos/:slug" element={<TournamentDetailPage />} />
-              <Route path="bienvenida" element={<WelcomePage />} />
+              {/* Enlaces del correo: el único sitio donde se elige una contraseña */}
+              <Route path="bienvenida" element={<SetPasswordPage mode="activate" />} />
+              <Route path="restablecer" element={<SetPasswordPage mode="reset" />} />
+              <Route path="recuperar" element={<ForgotPasswordPage />} />
               <Route path="mi-cuenta" element={<MemberAreaPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>

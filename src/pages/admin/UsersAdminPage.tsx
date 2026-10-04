@@ -3,10 +3,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Eye, EyeOff, KeyRound, Pencil, Plus, UserCheck, UserX, Wand2 } from 'lucide-react';
+import { MailCheck, MailQuestion, Pencil, Plus, Send, UserCheck, UserX } from 'lucide-react';
 import {
   useCreateUser,
-  useResetPassword,
+  useSendAccessEmail,
   useSetUserActive,
   useStaffUsers,
   useUpdateUser,
@@ -33,12 +33,8 @@ const ROLES: Record<StaffRole, { label: string; help: string }> = {
 };
 
 /// Mismas reglas que CreateUserDto en el backend: así el error sale en el
-/// formulario y no como un 400 después de enviar.
-const password = z
-  .string()
-  .min(6, 'Mínimo 6 caracteres')
-  .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Debe tener minúscula, mayúscula y número');
-
+/// formulario y no como un 400 después de enviar. Sin contraseña: la crea el
+/// propio usuario desde el correo de invitación.
 const profile = z.object({
   name: z.string().trim().min(2, 'Mínimo 2 caracteres').max(60),
   surname: z.string().trim().min(2, 'Mínimo 2 caracteres').max(60),
@@ -51,37 +47,33 @@ const profile = z.object({
   role: z.enum(['ADMIN', 'JUDGE']),
 });
 
-const createSchema = profile.extend({ password });
-type CreateValues = z.infer<typeof createSchema>;
 type EditValues = z.infer<typeof profile>;
 
-/// Contraseña aleatoria que cumple la política (sin caracteres ambiguos como
-/// 0/O o 1/l, para poder dictarla). Usa crypto, no Math.random.
-function generatePassword(length = 12) {
-  const sets = ['abcdefghijkmnpqrstuvwxyz', 'ABCDEFGHJKLMNPQRSTUVWXYZ', '23456789'];
-  const all = sets.join('');
-  const pick = (chars: string) =>
-    chars[crypto.getRandomValues(new Uint32Array(1))[0] % chars.length];
-  const chars = [...sets.map(pick), ...Array.from({ length: length - 3 }, () => pick(all))];
-  // Mezcla para que los obligatorios no queden siempre al principio
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  return chars.join('');
-}
-
-type Dialog =
-  | { kind: 'create' }
-  | { kind: 'edit'; user: User }
-  | { kind: 'password'; user: User }
-  | null;
+type Dialog = { kind: 'create' } | { kind: 'edit'; user: User } | null;
 
 export function UsersAdminPage() {
   const me = useAuthStore((s) => s.user);
   const { data: users, isLoading } = useStaffUsers();
   const setActive = useSetUserActive();
+  const sendAccess = useSendAccessEmail();
   const [dialog, setDialog] = useState<Dialog>(null);
+
+  /// El admin nunca ve ni elige contraseñas: el usuario recibe un enlace.
+  const sendAccessEmail = (user: User) => {
+    const what = user.emailVerified
+      ? 'un enlace para elegir una contraseña nueva'
+      : 'de nuevo la invitación para crear su contraseña';
+    if (!window.confirm(`¿Enviar a ${user.email} ${what}?`)) return;
+    sendAccess.mutate(user.id, {
+      onSuccess: ({ sent, kind }) =>
+        sent
+          ? toast.success(
+              kind === 'invite' ? 'Invitación reenviada' : 'Enlace de recuperación enviado',
+            )
+          : toast.error('No se pudo enviar el correo. Revisa la configuración de email.'),
+      onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo enviar el correo')),
+    });
+  };
 
   const toggleActive = (user: User) => {
     const name = fullName(user);
@@ -146,6 +138,7 @@ export function UsersAdminPage() {
                       <div className="mt-1.5 flex flex-wrap gap-2 md:hidden">
                         <Badge variant="secondary" className="sm:hidden">{role?.label}</Badge>
                         {!user.isActive && <Badge variant="outline">Inactivo</Badge>}
+                        <EmailStatus user={user} />
                       </div>
                     </td>
                     <td className="table-td hidden sm:table-cell">
@@ -154,9 +147,12 @@ export function UsersAdminPage() {
                       </Badge>
                     </td>
                     <td className="table-td hidden md:table-cell">
-                      <Badge variant={user.isActive ? 'secondary' : 'outline'}>
-                        {user.isActive ? 'Activo' : 'Inactivo'}
-                      </Badge>
+                      <div className="flex flex-col items-start gap-1">
+                        <Badge variant={user.isActive ? 'secondary' : 'outline'}>
+                          {user.isActive ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                        <EmailStatus user={user} />
+                      </div>
                     </td>
                     <td className="table-td">
                       {/* En móvil, en columna: tres iconos en fila no caben junto al correo */}
@@ -173,11 +169,12 @@ export function UsersAdminPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="Restablecer contraseña"
-                          aria-label={`Restablecer la contraseña de ${fullName(user)}`}
-                          onClick={() => setDialog({ kind: 'password', user })}
+                          title="Enviar correo de acceso"
+                          aria-label={`Enviar correo de acceso a ${fullName(user)}`}
+                          onClick={() => sendAccessEmail(user)}
+                          disabled={sendAccess.isPending || !user.isActive}
                         >
-                          <KeyRound className="h-4 w-4" />
+                          <Send className="h-4 w-4" />
                         </Button>
                         {/* El backend también lo impide: nadie se desactiva a sí mismo */}
                         {!isMe && (
@@ -214,10 +211,31 @@ export function UsersAdminPage() {
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog?.kind === 'password' && (
-        <PasswordDialog user={dialog.user} onClose={() => setDialog(null)} />
-      )}
     </div>
+  );
+}
+
+/// Si confirmó su correo (creó su contraseña desde el enlace) y cuándo.
+function EmailStatus({ user }: { user: User }) {
+  if (user.emailVerified) {
+    const when = user.emailVerifiedAt
+      ? new Date(user.emailVerifiedAt).toLocaleDateString('es-CL')
+      : null;
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+        title={when ? `Correo confirmado el ${when}` : 'Correo confirmado'}
+      >
+        <MailCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+        Correo confirmado
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <MailQuestion className="h-3.5 w-3.5" aria-hidden="true" />
+      Invitación pendiente
+    </span>
   );
 }
 
@@ -227,17 +245,23 @@ function fullName(user: User) {
 
 function CreateUserDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateUser();
-  const form = useForm<CreateValues>({
-    resolver: zodResolver(createSchema),
-    defaultValues: { role: 'JUDGE', password: generatePassword() },
+  const form = useForm<EditValues>({
+    resolver: zodResolver(profile),
+    defaultValues: { role: 'JUDGE' },
   });
 
-  const onSubmit = (values: CreateValues) =>
+  const onSubmit = (values: EditValues) =>
     create.mutate(
       { ...values, phone: values.phone || undefined },
       {
-        onSuccess: () => {
-          toast.success(`${values.name} creado. Compártele su contraseña.`);
+        onSuccess: ({ emailSent }) => {
+          if (emailSent) {
+            toast.success(`${values.name} creado. Le enviamos un correo para crear su contraseña.`);
+          } else {
+            toast.warning(
+              `${values.name} creado, pero el correo no salió. Reenvíalo con «Enviar correo de acceso».`,
+            );
+          }
           onClose();
         },
         onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo crear el usuario')),
@@ -248,13 +272,11 @@ function CreateUserDialog({ onClose }: { onClose: () => void }) {
     <Modal title="Nuevo usuario" onClose={onClose}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <ProfileFields form={form} />
-        <PasswordField
-          id="new-user-password"
-          register={form.register('password')}
-          error={form.formState.errors.password?.message}
-          onGenerate={() => form.setValue('password', generatePassword(), { shouldValidate: true })}
-        />
-        <DialogActions onClose={onClose} pending={create.isPending} submitLabel="Crear usuario" />
+        <p className="flex gap-2 rounded-md bg-secondary/60 p-3 text-xs text-muted-foreground">
+          <Send className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          Le enviaremos un correo para que cree su propia contraseña. Nadie más la conoce.
+        </p>
+        <DialogActions onClose={onClose} pending={create.isPending} submitLabel="Crear y enviar invitación" />
       </form>
     </Modal>
   );
@@ -304,54 +326,16 @@ function EditUserDialog({
   );
 }
 
-function PasswordDialog({ user, onClose }: { user: User; onClose: () => void }) {
-  const reset = useResetPassword();
-  const form = useForm<{ password: string }>({
-    resolver: zodResolver(z.object({ password })),
-    defaultValues: { password: generatePassword() },
-  });
-
-  const onSubmit = ({ password: newPassword }: { password: string }) =>
-    reset.mutate(
-      { id: user.id, newPassword },
-      {
-        onSuccess: () => {
-          toast.success('Contraseña restablecida. Compártela con el usuario.');
-          onClose();
-        },
-        onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo restablecer')),
-      },
-    );
-
-  return (
-    <Modal title="Restablecer contraseña" onClose={onClose}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <p className="text-sm text-muted-foreground">
-          Nueva contraseña para <strong className="text-foreground">{fullName(user)}</strong>.
-        </p>
-        <PasswordField
-          id="reset-password"
-          register={form.register('password')}
-          error={form.formState.errors.password?.message}
-          onGenerate={() => form.setValue('password', generatePassword(), { shouldValidate: true })}
-        />
-        <DialogActions onClose={onClose} pending={reset.isPending} submitLabel="Restablecer" />
-      </form>
-    </Modal>
-  );
-}
-
 // ---------- Piezas de formulario ----------
 
 function ProfileFields({
   form,
   roleLocked = false,
 }: {
-  // Los dos formularios comparten estos campos; el tipo mínimo común basta.
-  form: ReturnType<typeof useForm<EditValues>> | ReturnType<typeof useForm<CreateValues>>;
+  form: ReturnType<typeof useForm<EditValues>>;
   roleLocked?: boolean;
 }) {
-  const f = form as ReturnType<typeof useForm<EditValues>>;
+  const f = form;
   const errors = f.formState.errors;
   const role = f.watch('role');
 
@@ -403,51 +387,6 @@ function ProfileFields({
         )}
       </fieldset>
     </>
-  );
-}
-
-function PasswordField({
-  id,
-  register,
-  error,
-  onGenerate,
-}: {
-  id: string;
-  register: ReturnType<ReturnType<typeof useForm<{ password: string }>>['register']>;
-  error?: string;
-  onGenerate: () => void;
-}) {
-  const [visible, setVisible] = useState(true);
-  return (
-    <Field id={id} label="Contraseña" error={error}>
-      <div className="flex gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Input
-            id={id}
-            type={visible ? 'text' : 'password'}
-            autoComplete="new-password"
-            className="pr-10 font-mono"
-            {...register}
-          />
-          <button
-            type="button"
-            onClick={() => setVisible((v) => !v)}
-            aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
-          >
-            {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-        <Button type="button" variant="outline" onClick={onGenerate} className="gap-2" title="Generar otra">
-          <Wand2 className="h-4 w-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Generar</span>
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Mínimo 6 caracteres, con minúscula, mayúscula y número. Cópiala antes de guardar: no se
-        vuelve a mostrar.
-      </p>
-    </Field>
   );
 }
 

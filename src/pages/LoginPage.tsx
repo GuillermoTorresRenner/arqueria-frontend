@@ -87,6 +87,16 @@ export function LoginPage() {
               )}
             </div>
 
+            <p className="text-right text-xs">
+
+              <Link to="/recuperar" className="text-muted-foreground underline hover:text-foreground">
+
+                ¿Olvidaste tu contraseña?
+
+              </Link>
+
+            </p>
+
             <Button type="submit" className="w-full" disabled={login.isPending}>
               {login.isPending ? 'Entrando…' : 'Entrar'}
             </Button>

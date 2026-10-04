@@ -34,7 +34,7 @@ export function useStaffUsers() {
   });
 }
 
-function useStaffMutation<T>(fn: (vars: T) => Promise<unknown>) {
+function useStaffMutation<T, R>(fn: (vars: T) => Promise<R>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: fn,
@@ -42,9 +42,11 @@ function useStaffMutation<T>(fn: (vars: T) => Promise<unknown>) {
   });
 }
 
+/// Alta sin contraseña: el backend envía la invitación para que la cree el
+/// propio usuario. Devuelve si el correo salió.
 export const useCreateUser = () =>
-  useStaffMutation((body: UserInput & { password: string }) =>
-    api.post('/users', body).then((r) => r.data),
+  useStaffMutation((body: UserInput) =>
+    api.post<User & { emailSent: boolean }>('/users', body).then((r) => r.data),
   );
 
 export const useUpdateUser = () =>
@@ -52,9 +54,13 @@ export const useUpdateUser = () =>
     api.patch(`/users/${id}`, body).then((r) => r.data),
   );
 
-export const useResetPassword = () =>
-  useStaffMutation(({ id, newPassword }: { id: string; newPassword: string }) =>
-    api.patch(`/users/${id}/password`, { newPassword }).then((r) => r.data),
+/// «Enviar correo de acceso»: invitación si la cuenta no se activó, enlace de
+/// recuperación si ya está activa. El admin nunca elige la contraseña.
+export const useSendAccessEmail = () =>
+  useStaffMutation((id: string) =>
+    api
+      .post<{ kind: 'invite' | 'password_reset'; sent: boolean }>(`/users/${id}/access-email`)
+      .then((r) => r.data),
   );
 
 /// Baja lógica: el usuario no puede entrar, pero conserva su histórico.

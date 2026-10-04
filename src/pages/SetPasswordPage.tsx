@@ -5,8 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
-import { useVerifyEmail } from '@/hooks/use-join';
-import { useJoinStore } from '@/features/join-store';
+import { useSetPassword } from '@/hooks/use-join';
 import { apiErrorMessage } from '@/lib/api';
 import { Seo } from '@/components/Seo';
 import { LogoFull } from '@/components/Logo';
@@ -29,8 +28,31 @@ const schema = z
   });
 type FormValues = z.infer<typeof schema>;
 
-/// El token llega en el fragmento (#token=…) para que no viaje en la URL al
-/// servidor ni quede en logs. Se lee una vez y se limpia de la barra.
+const COPY = {
+  activate: {
+    title: 'Activa tu cuenta',
+    lead: 'Crea la contraseña con la que entrarás al sitio del club.',
+    submit: 'Activar mi cuenta',
+    pending: 'Activando…',
+    done: 'Tu cuenta está activa.',
+    invalid:
+      'Este enlace no es válido. Ábrelo directamente desde el correo que te enviamos o pide uno nuevo.',
+    newLink: { to: '/recuperar', label: 'Pedir un enlace nuevo' },
+  },
+  reset: {
+    title: 'Elige una contraseña nueva',
+    lead: 'Escribe la contraseña nueva para tu cuenta.',
+    submit: 'Guardar contraseña',
+    pending: 'Guardando…',
+    done: 'Tu contraseña se actualizó.',
+    invalid:
+      'Este enlace no es válido. Ábrelo directamente desde el correo de recuperación o solicita otro.',
+    newLink: { to: '/recuperar', label: 'Solicitar otro enlace' },
+  },
+} as const;
+
+/// El token llega en el fragmento (#token=…) para que no viaje al servidor ni
+/// quede en logs. Se lee una vez y se borra de la barra de direcciones.
 function readToken() {
   const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
   if (token) window.history.replaceState(null, '', window.location.pathname);
@@ -38,14 +60,17 @@ function readToken() {
 }
 
 /**
- * Destino del enlace del correo de bienvenida: la persona crea su contraseña,
- * su correo queda validado y entra con la sesión iniciada.
+ * Destino de los enlaces del correo. Es el único sitio donde se elige una
+ * contraseña: nadie la escribe por otra persona.
+ * - `activate` (/bienvenida): cuenta nueva (inscripción web o alta desde el
+ *   panel); el correo queda confirmado.
+ * - `reset` (/restablecer): recuperación de contraseña.
  */
-export function WelcomePage() {
+export function SetPasswordPage({ mode }: { mode: 'activate' | 'reset' }) {
+  const copy = COPY[mode];
   const [token] = useState(readToken);
   const navigate = useNavigate();
-  const openJoin = useJoinStore((s) => s.openJoin);
-  const verify = useVerifyEmail();
+  const setPassword = useSetPassword(mode);
   const [visible, setVisible] = useState(false);
   const {
     register,
@@ -54,43 +79,40 @@ export function WelcomePage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const onSubmit = ({ password }: FormValues) =>
-    verify.mutate(
+    setPassword.mutate(
       { token: token!, password },
       {
-        onSuccess: (data) => {
-          toast.success(`¡Bienvenido, ${data.user.name ?? ''}! Tu cuenta está activa.`);
-          navigate('/mi-cuenta', { replace: true });
+        onSuccess: ({ user }) => {
+          toast.success(`${user.name ? `¡Hola, ${user.name}! ` : ''}${copy.done}`);
+          navigate(user.role === 'MEMBER' ? '/mi-cuenta' : '/admin', { replace: true });
         },
       },
     );
 
   return (
     <div className="container flex justify-center py-12 md:py-20">
-      <Seo title="Activa tu cuenta" noindex />
+      <Seo title={copy.title} noindex />
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
           <LogoFull className="mb-2 h-24" />
-          <CardTitle>Activa tu cuenta</CardTitle>
+          <CardTitle>{copy.title}</CardTitle>
         </CardHeader>
         <CardContent>
           {!token ? (
             <div className="space-y-4 text-center text-sm text-muted-foreground">
-              <p>
-                Este enlace no es válido. Ábrelo directamente desde el correo de bienvenida o
-                inscríbete de nuevo con el mismo correo para recibir uno nuevo.
-              </p>
-              <Button onClick={openJoin}>Inscribirme</Button>
+              <p>{copy.invalid}</p>
+              <Button asChild>
+                <Link to={copy.newLink.to}>{copy.newLink.label}</Link>
+              </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-              <p className="text-sm text-muted-foreground">
-                Crea la contraseña con la que entrarás al sitio del club.
-              </p>
+              <p className="text-sm text-muted-foreground">{copy.lead}</p>
               <div className="space-y-2">
-                <Label htmlFor="welcome-password">Contraseña</Label>
+                <Label htmlFor="new-password">Contraseña</Label>
                 <div className="relative">
                   <Input
-                    id="welcome-password"
+                    id="new-password"
                     type={visible ? 'text' : 'password'}
                     autoComplete="new-password"
                     className="pr-10"
@@ -114,9 +136,9 @@ export function WelcomePage() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="welcome-confirm">Repite la contraseña</Label>
+                <Label htmlFor="confirm-password">Repite la contraseña</Label>
                 <Input
-                  id="welcome-confirm"
+                  id="confirm-password"
                   type={visible ? 'text' : 'password'}
                   autoComplete="new-password"
                   {...register('confirm')}
@@ -126,20 +148,26 @@ export function WelcomePage() {
                 )}
               </div>
 
-              {verify.isError && (
-                <div role="alert" className="space-y-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  <p>{apiErrorMessage(verify.error, 'No pudimos activar tu cuenta.')}</p>
-                  <button type="button" onClick={openJoin} className="font-medium underline">
-                    Pedir un enlace nuevo
-                  </button>
+              {setPassword.isError && (
+                <div
+                  role="alert"
+                  className="space-y-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                >
+                  <p>{apiErrorMessage(setPassword.error, 'No pudimos guardar tu contraseña.')}</p>
+                  <Link to={copy.newLink.to} className="font-medium underline">
+                    {copy.newLink.label}
+                  </Link>
                 </div>
               )}
 
-              <Button type="submit" className="w-full" disabled={verify.isPending}>
-                {verify.isPending ? 'Activando…' : 'Activar mi cuenta'}
+              <Button type="submit" className="w-full" disabled={setPassword.isPending}>
+                {setPassword.isPending ? copy.pending : copy.submit}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                ¿Ya la activaste? <Link to="/login" className="underline">Inicia sesión</Link>
+                ¿Ya tienes contraseña?{' '}
+                <Link to="/login" className="underline">
+                  Inicia sesión
+                </Link>
               </p>
             </form>
           )}

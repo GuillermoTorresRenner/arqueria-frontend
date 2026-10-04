@@ -9,6 +9,9 @@ export interface User {
   avatar: string | null;
   isActive: boolean;
   phone?: string | null;
+  /// Confirmó su correo creando la contraseña desde el enlace del email
+  emailVerified?: boolean;
+  emailVerifiedAt?: string | null;
 }
 
 // ---------- Contenido (CMS) ----------

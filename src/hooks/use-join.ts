@@ -26,13 +26,28 @@ export function useJoinClub() {
   });
 }
 
-/// Enlace del correo de bienvenida: crea la contraseña, valida el correo y
-/// deja la sesión iniciada.
-export function useVerifyEmail() {
+/// Contraseña elegida desde un enlace del correo: `activate` (cuenta nueva,
+/// confirma el correo) o `reset` (recuperación). En ambos casos queda la
+/// sesión iniciada.
+export function useSetPassword(mode: 'activate' | 'reset') {
   const setUser = useAuthStore((s) => s.setUser);
   return useMutation({
     mutationFn: async (payload: { token: string; password: string }) =>
-      (await api.post<{ user: User }>('/auth/verify-email', payload)).data,
+      (
+        await api.post<{ user: User }>(
+          mode === 'activate' ? '/auth/verify-email' : '/auth/reset-password',
+          payload,
+        )
+      ).data,
     onSuccess: (data) => setUser(data.user),
+  });
+}
+
+/// Pide el enlace de recuperación. El backend responde igual exista o no la
+/// cuenta, así que el mensaje al usuario también es siempre el mismo.
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (email: string) =>
+      (await api.post<{ message: string }>('/auth/forgot-password', { email })).data,
   });
 }
