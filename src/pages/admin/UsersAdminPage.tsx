@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { MailCheck, MailQuestion, Pencil, Plus, Send, UserCheck, UserX } from 'lucide-react';
+import { MailCheck, MailQuestion, Pencil, Plus, Search, Send, UserCheck, UserX } from 'lucide-react';
+import { useConfirm } from '@/features/confirm-store';
 import {
   useCreateUser,
   useSendAccessEmail,
@@ -57,13 +58,36 @@ export function UsersAdminPage() {
   const setActive = useSetUserActive();
   const sendAccess = useSendAccessEmail();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [query, setQuery] = useState('');
+  const confirm = useConfirm();
+
+  // El equipo cabe entero en una página: se filtra en el navegador. Cada
+  // palabra debe aparecer en el nombre, el apellido o el correo.
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const visible = (users ?? []).filter((u) =>
+    words.every((w) =>
+      [u.name, u.surname, u.email].some((field) => field?.toLowerCase().includes(w)),
+    ),
+  );
 
   /// El admin nunca ve ni elige contraseñas: el usuario recibe un enlace.
-  const sendAccessEmail = (user: User) => {
-    const what = user.emailVerified
-      ? 'un enlace para elegir una contraseña nueva'
-      : 'de nuevo la invitación para crear su contraseña';
-    if (!window.confirm(`¿Enviar a ${user.email} ${what}?`)) return;
+  const sendAccessEmail = async (user: User) => {
+    const ok = await confirm({
+      title: 'Enviar correo de acceso',
+      description: user.emailVerified ? (
+        <>
+          Se enviará a <strong className="text-foreground">{user.email}</strong> un enlace para
+          elegir una contraseña nueva. Su contraseña actual sigue valiendo hasta que la cambie.
+        </>
+      ) : (
+        <>
+          Se reenviará a <strong className="text-foreground">{user.email}</strong> la invitación
+          para crear su contraseña.
+        </>
+      ),
+      confirmLabel: 'Enviar correo',
+    });
+    if (!ok) return;
     sendAccess.mutate(user.id, {
       onSuccess: ({ sent, kind }) =>
         sent
@@ -75,10 +99,17 @@ export function UsersAdminPage() {
     });
   };
 
-  const toggleActive = (user: User) => {
+  const toggleActive = async (user: User) => {
     const name = fullName(user);
-    if (user.isActive && !window.confirm(`¿Desactivar a ${name}? No podrá entrar al panel.`)) {
-      return;
+    if (user.isActive) {
+      const ok = await confirm({
+        title: `¿Desactivar a ${name}?`,
+        description:
+          'No podrá entrar al panel hasta que lo reactives. Conserva su historial de puntajes y torneos.',
+        confirmLabel: 'Desactivar',
+        tone: 'danger',
+      });
+      if (!ok) return;
     }
     setActive.mutate(
       { id: user.id, active: !user.isActive },
@@ -104,10 +135,27 @@ export function UsersAdminPage() {
         </Button>
       </header>
 
+      <div className="relative mb-4">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por nombre, apellido o correo"
+          aria-label="Buscar usuarios por nombre, apellido o correo"
+          className="pl-9"
+        />
+      </div>
+
       {isLoading ? (
         <div className="h-48 skeleton" aria-busy="true" />
       ) : !users?.length ? (
         <p className="state-empty">Todavía no hay administradores ni jueces.</p>
+      ) : !visible.length ? (
+        <p className="state-empty">Ningún usuario coincide con la búsqueda.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <table className="table-base">
@@ -120,7 +168,7 @@ export function UsersAdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {users.map((user) => {
+              {visible.map((user) => {
                 const isMe = user.id === me?.id;
                 const role = ROLES[user.role as StaffRole];
                 return (

@@ -110,6 +110,7 @@ export interface Member {
   phone: string | null;
   status: MemberStatus;
   membershipEnd: string | null;
+  experience?: import('@/lib/join').ArcheryExperience | null;
   user: Pick<User, 'id' | 'name' | 'surname' | 'email' | 'avatar' | 'isActive'>;
   categories: { category: Category }[];
 }

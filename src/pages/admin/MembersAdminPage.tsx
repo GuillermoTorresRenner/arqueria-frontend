@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { Search, Trash2 } from 'lucide-react';
+import { useConfirm } from '@/features/confirm-store';
+import { Input } from '@/components/ui/input';
+import { EXPERIENCE_OPTIONS, type ArcheryExperience } from '@/lib/join';
 import { useDeleteMember, useMembers, useUpdateMemberStatus } from '@/hooks/use-members';
 import { apiErrorMessage } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
@@ -25,23 +28,43 @@ const FILTERS: { value: MemberStatus | 'all'; label: string }[] = [
   { value: 'SUSPENDED', label: 'Suspendidos' },
 ];
 
+const EXPERIENCE_LABEL = Object.fromEntries(EXPERIENCE_OPTIONS.map((o) => [o.value, o.label]));
+
 export function MembersAdminPage() {
   const [filter, setFilter] = useState<MemberStatus | 'all'>('all');
-  const { data: members, isLoading } = useMembers(
-    filter === 'all' ? undefined : filter,
-  );
+  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [experience, setExperience] = useState<ArcheryExperience | ''>('');
+
+  // La búsqueda va al servidor: se espera a que se deje de escribir
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const { data: members, isLoading } = useMembers({
+    status: filter === 'all' ? undefined : filter,
+    search,
+    experience: experience || undefined,
+  });
+  const filtering = Boolean(search || experience || filter !== 'all');
   const updateStatus = useUpdateMemberStatus();
   const deleteMember = useDeleteMember();
+  const confirm = useConfirm();
 
-  const remove = (member: { id: string; user: { name: string | null; surname: string | null; email: string } }) => {
-    const name = [member.user.name, member.user.surname].filter(Boolean).join(' ') || member.user.email;
-    if (
-      !window.confirm(
-        `¿Eliminar a ${name}? Se borran su cuenta y su ficha, y no se puede deshacer.`,
-      )
-    ) {
-      return;
-    }
+  const nameOf = (member: { user: { name: string | null; surname: string | null; email: string } }) =>
+    [member.user.name, member.user.surname].filter(Boolean).join(' ') || member.user.email;
+
+  const remove = async (member: Parameters<typeof nameOf>[0] & { id: string }) => {
+    const name = nameOf(member);
+    const ok = await confirm({
+      title: `¿Eliminar a ${name}?`,
+      description:
+        'Se borran su cuenta y su ficha de socio. No se puede deshacer. Si ya participó en torneos no se podrá eliminar: en ese caso, suspéndelo.',
+      confirmLabel: 'Eliminar socio',
+      tone: 'danger',
+    });
+    if (!ok) return;
     deleteMember.mutate(member.id, {
       onSuccess: () => toast.success(`${name} eliminado`),
       // Si participó en torneos, el backend explica por qué no y sugiere suspender
@@ -49,14 +72,25 @@ export function MembersAdminPage() {
     });
   };
 
-  const changeStatus = (id: string, status: MemberStatus) =>
+  const changeStatus = async (member: Parameters<typeof nameOf>[0] & { id: string }, status: MemberStatus) => {
+    if (status === 'SUSPENDED') {
+      const ok = await confirm({
+        title: `¿Suspender a ${nameOf(member)}?`,
+        description:
+          'Su membresía quedará suspendida hasta que la reactives. Conserva su cuenta y sus resultados.',
+        confirmLabel: 'Suspender',
+        tone: 'danger',
+      });
+      if (!ok) return;
+    }
     updateStatus.mutate(
-      { id, status },
+      { id: member.id, status },
       {
-        onSuccess: () => toast.success('Estado actualizado'),
+        onSuccess: () => toast.success(status === 'SUSPENDED' ? 'Socio suspendido' : 'Socio reactivado'),
         onError: () => toast.error('No se pudo actualizar'),
       },
     );
+  };
 
   return (
     <div>
@@ -67,6 +101,36 @@ export function MembersAdminPage() {
           eliminarlos.
         </p>
       </header>
+
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nombre, apellido o correo"
+            aria-label="Buscar socios por nombre, apellido o correo"
+            className="pl-9"
+          />
+        </div>
+        <select
+          value={experience}
+          onChange={(e) => setExperience(e.target.value as ArcheryExperience | '')}
+          aria-label="Filtrar por experiencia"
+          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-64"
+        >
+          <option value="">Toda la experiencia</option>
+          {EXPERIENCE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
@@ -85,7 +149,7 @@ export function MembersAdminPage() {
         <div className="h-48 skeleton" aria-busy="true" />
       ) : members?.length === 0 ? (
         <p className="state-empty">
-          No hay socios en este filtro.
+          {filtering ? 'Ningún socio coincide con la búsqueda.' : 'Todavía no hay socios.'}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
@@ -94,7 +158,8 @@ export function MembersAdminPage() {
               <tr>
                 <th scope="col" className="table-th hidden w-16 sm:table-cell">Nº</th>
                 <th scope="col" className="table-th">Socio</th>
-                <th scope="col" className="table-th hidden md:table-cell">Categorías</th>
+                <th scope="col" className="table-th hidden md:table-cell">Experiencia</th>
+                <th scope="col" className="table-th hidden lg:table-cell">Categorías</th>
                 <th scope="col" className="table-th hidden sm:table-cell">Estado</th>
                 <th scope="col" className="table-th text-right">Acciones</th>
               </tr>
@@ -118,7 +183,12 @@ export function MembersAdminPage() {
                       {member.user.email.split('@').slice(1).join('@')}
                     </div>
                     {/* En móvil, lo que no cabe en columnas va aquí debajo */}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2 md:hidden">
+                    {member.experience && (
+                      <div className="mt-1 text-xs text-muted-foreground md:hidden">
+                        {EXPERIENCE_LABEL[member.experience]}
+                      </div>
+                    )}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 lg:hidden">
                       <Badge variant={STATUS[member.status].variant} className="sm:hidden">
                         {STATUS[member.status].label}
                       </Badge>
@@ -129,7 +199,10 @@ export function MembersAdminPage() {
                       )}
                     </div>
                   </td>
-                  <td className={cn('hidden px-4 py-3 text-xs text-muted-foreground md:table-cell')}>
+                  <td className="table-td hidden text-xs text-muted-foreground md:table-cell">
+                    {member.experience ? EXPERIENCE_LABEL[member.experience] : '—'}
+                  </td>
+                  <td className={cn('hidden px-4 py-3 text-xs text-muted-foreground lg:table-cell')}>
                     {member.categories.length > 0
                       ? member.categories.map((c) => c.category.label).join(' · ')
                       : '—'}
@@ -146,7 +219,7 @@ export function MembersAdminPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => changeStatus(member.id, 'SUSPENDED')}
+                          onClick={() => changeStatus(member, 'SUSPENDED')}
                         >
                           Suspender
                         </Button>
@@ -154,7 +227,7 @@ export function MembersAdminPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => changeStatus(member.id, 'ACTIVE')}
+                          onClick={() => changeStatus(member, 'ACTIVE')}
                         >
                           Reactivar
                         </Button>

@@ -1,12 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ArcheryExperience } from '@/lib/join';
 import { api } from '@/lib/api';
 import type { Member, MemberStatus } from '@/types';
 
-export function useMembers(status?: MemberStatus) {
+export interface MemberFilters {
+  status?: MemberStatus;
+  /// Nombre, apellido o correo; con varias palabras, todas deben aparecer
+  search?: string;
+  experience?: ArcheryExperience;
+}
+
+export function useMembers(filters: MemberFilters = {}) {
+  // Solo los filtros con valor: así la clave de caché no cambia por un ''
+  const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
   return useQuery({
-    queryKey: ['members', status ?? 'all'],
-    queryFn: async () =>
-      (await api.get<Member[]>('/members', { params: status ? { status } : {} })).data,
+    queryKey: ['members', params],
+    queryFn: async () => (await api.get<Member[]>('/members', { params })).data,
+    // Mientras se escribe, se conserva la lista anterior en vez de parpadear
+    placeholderData: keepPreviousData,
   });
 }
 

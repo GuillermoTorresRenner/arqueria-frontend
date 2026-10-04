@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Toaster } from 'sonner';
 
 import { PublicLayout } from '@/components/PublicLayout';
@@ -102,6 +103,7 @@ export default function App() {
         </Suspense>
       </BrowserRouter>
       <Toaster richColors position="top-right" />
+      <ConfirmDialog />
     </QueryClientProvider>
   );
 }
