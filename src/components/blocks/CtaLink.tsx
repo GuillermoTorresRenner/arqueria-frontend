@@ -2,6 +2,8 @@ import { Button } from '@/components/ui/button';
 import { WhatsAppIcon } from '@/components/icons';
 import type { ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isJoinHref } from '@/lib/join';
+import { useJoinStore } from '@/features/join-store';
 
 /// Iconos que el CMS puede pedir para un botón. Añadir aquí los nuevos.
 const ICONS = {
@@ -21,8 +23,20 @@ interface CtaLinkProps extends Pick<ButtonProps, 'variant' | 'size' | 'className
  * manipular la nuestra a través de `window.opener`).
  */
 export function CtaLink({ href, label, icon, className, ...buttonProps }: CtaLinkProps) {
+  const openJoin = useJoinStore((s) => s.openJoin);
   const Icon = icon ? ICONS[icon as keyof typeof ICONS] : undefined;
   const isExternal = /^https?:\/\//i.test(href);
+  const classes = cn('h-auto min-h-11 max-w-full whitespace-normal py-2.5 text-center', className);
+
+  // Botones de «unirse»: abren la inscripción en vez de navegar
+  if (isJoinHref(href)) {
+    return (
+      <Button type="button" {...buttonProps} className={classes} onClick={openJoin}>
+        {Icon && <Icon className="h-5 w-5" />}
+        {label}
+      </Button>
+    );
+  }
 
   return (
     // El texto lo escribe el admin y puede ser largo: en pantallas estrechas
@@ -30,7 +44,7 @@ export function CtaLink({ href, label, icon, className, ...buttonProps }: CtaLin
     <Button
       asChild
       {...buttonProps}
-      className={cn('h-auto min-h-11 max-w-full whitespace-normal py-2.5 text-center', className)}
+      className={classes}
     >
       <a
         href={href}

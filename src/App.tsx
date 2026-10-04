@@ -43,6 +43,13 @@ const UsersAdminPage = lazy(() =>
   })),
 );
 
+const WelcomePage = lazy(() =>
+  import('@/pages/WelcomePage').then((m) => ({ default: m.WelcomePage })),
+);
+const MemberAreaPage = lazy(() =>
+  import('@/pages/MemberAreaPage').then((m) => ({ default: m.MemberAreaPage })),
+);
+
 function RouteFallback() {
   return (
     <div className="container py-24" aria-busy="true">
@@ -72,6 +79,8 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="torneos" element={<TournamentsPage />} />
               <Route path="torneos/:slug" element={<TournamentDetailPage />} />
+              <Route path="bienvenida" element={<WelcomePage />} />
+              <Route path="mi-cuenta" element={<MemberAreaPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
 

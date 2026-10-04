@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
 import { LogoEmblem } from '@/components/Logo';
+import { useAuthStore } from '@/features/auth-store';
 
 const NAV = [
   { to: '/', label: 'Inicio' },
@@ -13,6 +14,11 @@ const NAV = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  // Con sesión: el socio va a su área y el equipo al panel
+  const account = user
+    ? { to: user.role === 'MEMBER' ? '/mi-cuenta' : '/admin', label: 'Mi cuenta' }
+    : { to: '/login', label: 'Acceder' };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur">
@@ -41,7 +47,7 @@ export function SiteHeader() {
           ))}
           <ThemeToggle className="ml-1" />
           <Button asChild size="sm" className="ml-1">
-            <Link to="/login">Acceder</Link>
+            <Link to={account.to}>{account.label}</Link>
           </Button>
         </nav>
 
@@ -73,11 +79,11 @@ export function SiteHeader() {
               </NavLink>
             ))}
             <Link
-              to="/login"
+              to={account.to}
               onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2.5 text-sm font-medium text-primary"
             >
-              Acceder
+              {account.label}
             </Link>
           </div>
         </nav>

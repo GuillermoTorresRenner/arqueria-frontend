@@ -1,11 +1,9 @@
 /**
- * Enlaces externos del club.
+ * Enlaces externos del club que viven en el chrome del sitio (footer).
  *
- * El del CTA de la landing es editable desde el CMS; estos son los que viven
- * en el chrome del sitio (footer). Si la invitación de WhatsApp se rota, hay
- * que actualizarla en los dos sitios: aquí y en el bloque CTA del panel.
+ * La invitación al grupo de WhatsApp NO está aquí a propósito: solo la entrega
+ * el backend a quien completa la inscripción (ver JoinDialog).
  */
 export const LINKS = {
-  whatsapp: 'https://chat.whatsapp.com/LkF1rxkIjBqL0qHTwA60au',
   instagram: 'https://www.instagram.com/galadhrym_arqueria/',
 } as const;

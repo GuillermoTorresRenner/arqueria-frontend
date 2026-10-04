@@ -33,14 +33,14 @@ export function LoginPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
-    if (user) navigate(user.role === 'MEMBER' ? '/' : '/admin', { replace: true });
+    if (user) navigate(user.role === 'MEMBER' ? '/mi-cuenta' : '/admin', { replace: true });
   }, [user, navigate]);
 
   const onSubmit = (values: FormValues) => {
     login.mutate(values, {
       onSuccess: (data) => {
         toast.success(`Hola, ${data.user.name ?? data.user.email}`);
-        navigate(data.user.role === 'MEMBER' ? '/' : '/admin', { replace: true });
+        navigate(data.user.role === 'MEMBER' ? '/mi-cuenta' : '/admin', { replace: true });
       },
       onError: () => toast.error('Correo o contraseña incorrectos'),
     });

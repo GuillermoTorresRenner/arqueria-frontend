@@ -23,7 +23,8 @@ export function useLogout() {
     mutationFn: async () => {
       // Aunque el backend falle, hay que limpiar el estado local igualmente.
       try {
-        await api.post('/auth/logout');
+        // El backend lo expone como GET (limpia las cookies httpOnly)
+        await api.get('/auth/logout');
       } catch {
         /* sin efecto: la sesión local se limpia de todos modos */
       }

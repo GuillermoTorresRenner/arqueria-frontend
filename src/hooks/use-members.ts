@@ -18,3 +18,13 @@ export function useUpdateMemberStatus() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
   });
 }
+
+/// Ficha del socio con sesión iniciada (área «Mi cuenta»).
+export function useMyMember(enabled = true) {
+  return useQuery({
+    queryKey: ['members', 'me'],
+    queryFn: async () => (await api.get<Member>('/members/me')).data,
+    enabled,
+    retry: false,
+  });
+}

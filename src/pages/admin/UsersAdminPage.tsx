@@ -14,7 +14,7 @@ import {
 } from '@/hooks/use-users';
 import { useAuthStore } from '@/features/auth-store';
 import { apiErrorMessage } from '@/lib/api';
-import { Modal } from '@/components/admin/Modal';
+import { Modal } from '@/components/Modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
