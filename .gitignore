@@ -2,3 +2,6 @@ node_modules/
 dist/
 .env
 *.log
+
+# Valores reales locales (p. ej. .env.secrets.local): nunca al repo
+.env*.local
