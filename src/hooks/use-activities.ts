@@ -22,10 +22,11 @@ export type PlaceInput = Pick<Place, 'name' | 'address' | 'latitude' | 'longitud
   isActive?: boolean;
 };
 
+/// Resultado del buscador de OpenStreetMap (vía backend)
 export interface GeocodingResult {
   name: string;
-  region: string | null;
-  country: string | null;
+  /// Calle y número, comuna
+  address: string;
   latitude: number;
   longitude: number;
 }
@@ -181,4 +182,11 @@ export function useDeletePlace() {
 
 export async function geocode(q: string) {
   return (await api.get<GeocodingResult[]>('/places/geocode', { params: { q } })).data;
+}
+
+/// Dirección del punto marcado en el mapa (null si no hay nada cerca)
+export async function reverseGeocode(lat: number, lon: number) {
+  return (
+    await api.get<GeocodingResult | null>('/places/reverse', { params: { lat, lon } })
+  ).data;
 }

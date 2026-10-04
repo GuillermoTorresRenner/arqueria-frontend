@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, MapPin, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { LocateFixed, Loader2, MapPin, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import {
   geocode,
+  reverseGeocode,
   useCreatePlace,
   useDeletePlace,
   usePlaces,
@@ -12,13 +13,16 @@ import {
 } from '@/hooks/use-activities';
 import { useConfirm } from '@/features/confirm-store';
 import { apiErrorMessage } from '@/lib/api';
-import { mapUrl } from '@/lib/activities';
 import { Modal } from '@/components/Modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Place } from '@/types';
+import type { LatLng } from './MapPicker';
+
+/// Leaflet pesa ~150 KB: se descarga solo al abrir el formulario de un lugar
+const MapPicker = lazy(() => import('./MapPicker').then((m) => ({ default: m.MapPicker })));
 
 const EMPTY: PlaceInput = { name: '', address: '', latitude: null, longitude: null };
 
@@ -64,7 +68,11 @@ export function PlacesDialog({
   };
 
   return (
-    <Modal title="Lugares" onClose={onClose} className="max-w-2xl">
+    <Modal
+      title={editing === 'new' ? 'Nuevo lugar' : editing ? 'Editar lugar' : 'Lugares'}
+      onClose={onClose}
+      className="max-w-2xl"
+    >
       {editing ? (
         <PlaceForm
           place={editing === 'new' ? null : editing}
@@ -168,11 +176,23 @@ function PlaceForm({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GeocodingResult[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
+  /// Cambia para que el mapa vuele al punto (búsqueda, mi ubicación)
+  const [focus, setFocus] = useState(0);
+  /// Dirección del punto marcado, cuando ya había otra escrita
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const lastPick = useRef(0);
+  const addressRef = useRef(form.address);
+  addressRef.current = form.address;
   const createPlace = useCreatePlace();
   const updatePlace = useUpdatePlace();
   const saving = createPlace.isPending || updatePlace.isPending;
 
   const set = (patch: Partial<PlaceInput>) => setForm((prev) => ({ ...prev, ...patch }));
+  const point =
+    form.latitude != null && form.longitude != null
+      ? { latitude: form.latitude, longitude: form.longitude }
+      : null;
 
   const search = async () => {
     const q = query.trim() || form.name.trim();
@@ -181,10 +201,64 @@ function PlaceForm({
     try {
       setResults(await geocode(q));
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'No se pudo buscar la ubicación'));
+      toast.error(apiErrorMessage(e, 'No se pudo buscar la dirección'));
     } finally {
       setSearching(false);
     }
+  };
+
+  const choose = (r: GeocodingResult) => {
+    setForm((prev) => ({
+      ...prev,
+      latitude: r.latitude,
+      longitude: r.longitude,
+      // Solo completa lo que esté vacío: no pisa lo que escribió el admin
+      name: prev.name.trim() ? prev.name : r.name,
+      address: prev.address?.trim() ? prev.address : r.address,
+    }));
+    setSuggestion(null);
+    setResults(null);
+    setFocus((f) => f + 1);
+  };
+
+  /// Punto marcado en el mapa: se busca su dirección para proponerla
+  const pick = async ({ latitude, longitude }: LatLng, fly = false) => {
+    set({ latitude: round6(latitude), longitude: round6(longitude) });
+    if (fly) setFocus((f) => f + 1);
+    const id = ++lastPick.current;
+    try {
+      const found = await reverseGeocode(latitude, longitude);
+      if (id !== lastPick.current || !found) return;
+      // La dirección se lee al llegar la respuesta, no al hacer clic
+      const current = addressRef.current?.trim();
+      if (current) {
+        setSuggestion(current === found.address ? null : found.address);
+      } else {
+        set({ address: found.address });
+        setSuggestion(null);
+      }
+    } catch {
+      // Sin dirección no pasa nada: el punto ya quedó marcado
+    }
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Tu navegador no permite obtener la ubicación');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        void pick({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }, true);
+      },
+      () => {
+        setLocating(false);
+        toast.error('No pudimos obtener tu ubicación. Revisa los permisos del navegador.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   };
 
   const parseCoord = (value: string) => (value.trim() === '' ? null : Number(value));
@@ -208,10 +282,82 @@ function PlaceForm({
     else createPlace.mutate(body, options);
   };
 
-  const hasCoords = form.latitude != null && form.longitude != null;
-
   return (
     <form onSubmit={submit} className="space-y-4">
+      <fieldset className="space-y-3">
+        <legend className="mb-2 text-sm font-medium">Ubicación</legend>
+        <div className="flex gap-2">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void search();
+              }
+            }}
+            placeholder="Busca una dirección, parque o recinto"
+            aria-label="Buscar dirección, parque o recinto"
+          />
+          <Button type="button" variant="outline" onClick={search} disabled={searching}>
+            {searching ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Search className="h-4 w-4" aria-hidden="true" />
+            )}
+            <span className="hidden sm:inline">Buscar</span>
+          </Button>
+        </div>
+
+        {results && (
+          <ul className="max-h-48 divide-y overflow-y-auto rounded-md border text-sm">
+            {results.length === 0 && (
+              <li className="p-2 text-muted-foreground">
+                Sin resultados. Prueba con otra forma de escribirlo o marca el punto en el mapa.
+              </li>
+            )}
+            {results.map((r) => (
+              <li key={`${r.latitude},${r.longitude}`}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-2 p-2 text-left hover:bg-accent"
+                  onClick={() => choose(r)}
+                >
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span>
+                    <span className="font-medium">{r.name}</span>
+                    {r.address && r.address !== r.name && (
+                      <span className="block text-xs text-muted-foreground">{r.address}</span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="overflow-hidden rounded-md border">
+          <Suspense fallback={<div className="h-72 skeleton rounded-none" />}>
+            <MapPicker value={point} focus={focus} onPick={pick} className="h-72 w-full" />
+          </Suspense>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span>
+            {point
+              ? 'Haz clic en el mapa o arrastra el pin para ajustar el punto.'
+              : 'Busca la dirección o haz clic en el mapa para marcar el lugar.'}
+          </span>
+          <Button type="button" variant="ghost" size="sm" onClick={useMyLocation} disabled={locating}>
+            {locating ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <LocateFixed className="h-4 w-4" aria-hidden="true" />
+            )}
+            Usar mi ubicación
+          </Button>
+        </div>
+      </fieldset>
+
       <div className="space-y-2">
         <Label htmlFor="place-name">Nombre</Label>
         <Input
@@ -233,57 +379,28 @@ function PlaceForm({
           placeholder="Av. Larraín 9750, La Reina"
           onChange={(e) => set({ address: e.target.value })}
         />
+        {suggestion && (
+          <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            Dirección del punto marcado: <span className="text-foreground">{suggestion}</span>
+            <button
+              type="button"
+              className="font-medium text-primary hover:underline"
+              onClick={() => {
+                set({ address: suggestion });
+                setSuggestion(null);
+              }}
+            >
+              Usar esta
+            </button>
+          </p>
+        )}
       </div>
 
-      <fieldset className="space-y-3 rounded-md border p-3">
-        <legend className="px-1 text-sm font-medium">Ubicación para el pronóstico</legend>
-        <div className="flex gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                void search();
-              }
-            }}
-            placeholder="Busca la comuna o localidad"
-            aria-label="Buscar comuna o localidad"
-          />
-          <Button type="button" variant="outline" onClick={search} disabled={searching}>
-            {searching ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Search className="h-4 w-4" aria-hidden="true" />
-            )}
-            Buscar
-          </Button>
-        </div>
-
-        {results && (
-          <ul className="max-h-48 divide-y overflow-y-auto rounded-md border text-sm">
-            {results.length === 0 && (
-              <li className="p-2 text-muted-foreground">Sin resultados. Prueba con la comuna.</li>
-            )}
-            {results.map((r) => (
-              <li key={`${r.latitude},${r.longitude}`}>
-                <button
-                  type="button"
-                  className="w-full p-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    set({ latitude: r.latitude, longitude: r.longitude });
-                    setResults(null);
-                  }}
-                >
-                  <span className="font-medium">{r.name}</span>
-                  <span className="text-muted-foreground"> · {r.region ?? r.country}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="grid grid-cols-2 gap-2">
+      <details className="rounded-md border px-3 py-2 text-sm">
+        <summary className="cursor-pointer select-none text-muted-foreground">
+          Coordenadas {point ? `(${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)})` : '— sin marcar'}
+        </summary>
+        <div className="mt-3 grid grid-cols-2 gap-2 pb-1">
           <div className="space-y-1">
             <Label htmlFor="place-lat" className="text-xs">
               Latitud
@@ -296,6 +413,7 @@ function PlaceForm({
               max={90}
               value={form.latitude ?? ''}
               onChange={(e) => set({ latitude: parseCoord(e.target.value) })}
+              onBlur={() => setFocus((f) => f + 1)}
             />
           </div>
           <div className="space-y-1">
@@ -310,24 +428,14 @@ function PlaceForm({
               max={180}
               value={form.longitude ?? ''}
               onChange={(e) => set({ longitude: parseCoord(e.target.value) })}
+              onBlur={() => setFocus((f) => f + 1)}
             />
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {hasCoords ? (
-            <a
-              href={mapUrl({ name: form.name, address: null, latitude: form.latitude, longitude: form.longitude })}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-4"
-            >
-              Comprobar en el mapa
-            </a>
-          ) : (
-            'Sin coordenadas no se mostrará el pronóstico del tiempo.'
-          )}
+        <p className="pb-1 text-xs text-muted-foreground">
+          Sirven para el pronóstico del tiempo y el enlace al mapa.
         </p>
-      </fieldset>
+      </details>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={() => onDone()}>
@@ -340,3 +448,5 @@ function PlaceForm({
     </form>
   );
 }
+
+const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
