@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useMembers, useUpdateMemberStatus } from '@/hooks/use-members';
+import { Trash2 } from 'lucide-react';
+import { useDeleteMember, useMembers, useUpdateMemberStatus } from '@/hooks/use-members';
+import { apiErrorMessage } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,6 +12,7 @@ const STATUS: Record<
   MemberStatus,
   { label: string; variant: 'default' | 'secondary' | 'accent' | 'outline' | 'destructive' }
 > = {
+  // En desuso (ya no hay aprobación); se conserva por si quedara algún dato antiguo
   PENDING: { label: 'Pendiente', variant: 'accent' },
   ACTIVE: { label: 'Activo', variant: 'default' },
   SUSPENDED: { label: 'Suspendido', variant: 'destructive' },
@@ -18,7 +21,6 @@ const STATUS: Record<
 
 const FILTERS: { value: MemberStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Todos' },
-  { value: 'PENDING', label: 'Pendientes' },
   { value: 'ACTIVE', label: 'Activos' },
   { value: 'SUSPENDED', label: 'Suspendidos' },
 ];
@@ -29,6 +31,23 @@ export function MembersAdminPage() {
     filter === 'all' ? undefined : filter,
   );
   const updateStatus = useUpdateMemberStatus();
+  const deleteMember = useDeleteMember();
+
+  const remove = (member: { id: string; user: { name: string | null; surname: string | null; email: string } }) => {
+    const name = [member.user.name, member.user.surname].filter(Boolean).join(' ') || member.user.email;
+    if (
+      !window.confirm(
+        `¿Eliminar a ${name}? Se borran su cuenta y su ficha, y no se puede deshacer.`,
+      )
+    ) {
+      return;
+    }
+    deleteMember.mutate(member.id, {
+      onSuccess: () => toast.success(`${name} eliminado`),
+      // Si participó en torneos, el backend explica por qué no y sugiere suspender
+      onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo eliminar'), { duration: 8000 }),
+    });
+  };
 
   const changeStatus = (id: string, status: MemberStatus) =>
     updateStatus.mutate(
@@ -44,7 +63,8 @@ export function MembersAdminPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Socios</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Aprueba solicitudes y administra el estado de los socios.
+          Socios inscritos en el club. Entran activos al inscribirse; aquí puedes suspenderlos o
+          eliminarlos.
         </p>
       </header>
 
@@ -119,33 +139,38 @@ export function MembersAdminPage() {
                       {STATUS[member.status].label}
                     </Badge>
                   </td>
-                  <td className="table-td text-right">
-                    {member.status === 'PENDING' && (
+                  <td className="table-td">
+                    {/* Sin aprobación: un socio está activo o suspendido */}
+                    <div className="flex flex-col items-end gap-1 sm:flex-row sm:justify-end">
+                      {member.status === 'ACTIVE' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => changeStatus(member.id, 'SUSPENDED')}
+                        >
+                          Suspender
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => changeStatus(member.id, 'ACTIVE')}
+                        >
+                          Reactivar
+                        </Button>
+                      )}
                       <Button
-                        size="sm"
-                        onClick={() => changeStatus(member.id, 'ACTIVE')}
+                        size="icon"
+                        variant="ghost"
+                        title="Eliminar socio"
+                        aria-label={`Eliminar a ${member.user.name ?? member.user.email}`}
+                        onClick={() => remove(member)}
+                        disabled={deleteMember.isPending}
+                        className="text-muted-foreground hover:text-destructive"
                       >
-                        Aprobar
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
-                    {member.status === 'ACTIVE' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => changeStatus(member.id, 'SUSPENDED')}
-                      >
-                        Suspender
-                      </Button>
-                    )}
-                    {member.status === 'SUSPENDED' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => changeStatus(member.id, 'ACTIVE')}
-                      >
-                        Reactivar
-                      </Button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}

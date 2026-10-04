@@ -9,10 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const STATUS_COPY = {
-  PENDING: {
-    label: 'Pendiente de aprobación',
-    text: 'Recibimos tu inscripción. El club la revisará y te avisaremos por correo.',
-  },
+  // En desuso: los socios ya no requieren aprobación
+  PENDING: { label: 'Socio activo', text: 'Tu membresía está activa.' },
   ACTIVE: { label: 'Socio activo', text: 'Tu membresía está activa.' },
   SUSPENDED: {
     label: 'Suspendido',

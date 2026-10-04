@@ -19,6 +19,16 @@ export function useUpdateMemberStatus() {
   });
 }
 
+/// Elimina al socio (cuenta y ficha). El backend lo rechaza si ya participó
+/// en torneos, para no alterar resultados.
+export function useDeleteMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/members/${id}`)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
+  });
+}
+
 /// Ficha del socio con sesión iniciada (área «Mi cuenta»).
 export function useMyMember(enabled = true) {
   return useQuery({
