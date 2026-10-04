@@ -32,7 +32,8 @@ export function applyTheme(theme: Theme) {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: 'system',
+      // Claro por defecto: el oscuro solo si el visitante lo elige
+      theme: 'light',
       setTheme: (theme) => {
         applyTheme(theme);
         set({ theme });
@@ -47,8 +48,17 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'abma-theme',
+      // v1: el valor por defecto pasa de 'system' a 'light'. El botón solo
+      // guarda 'light' o 'dark', así que un 'system' guardado significa que
+      // nunca eligió: pasa a claro. Quien eligió oscuro lo conserva.
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as { theme?: Theme };
+        if (version < 1 && state.theme === 'system') return { ...state, theme: 'light' };
+        return state as ThemeState;
+      },
       onRehydrateStorage: () => (state) => {
-        applyTheme(state?.theme ?? 'system');
+        applyTheme(state?.theme ?? 'light');
       },
     },
   ),

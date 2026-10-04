@@ -71,12 +71,11 @@
       // ve un destello blanco mientras carga React.
       (function () {
         try {
+          // Claro por defecto: oscuro solo si el visitante lo eligió
+          // (coherente con theme-store: un 'system' guardado cuenta como claro)
           var stored = localStorage.getItem('abma-theme');
-          var theme = stored ? JSON.parse(stored).state.theme : 'system';
-          var dark =
-            theme === 'dark' ||
-            (theme === 'system' &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var theme = stored ? JSON.parse(stored).state.theme : 'light';
+          var dark = theme === 'dark';
           if (dark) document.documentElement.classList.add('dark');
           document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
         } catch (e) {
