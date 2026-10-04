@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
-import { CalendarDays, LogOut, Trophy } from 'lucide-react';
+import { LogOut, Trophy } from 'lucide-react';
+import { MemberActivities } from '@/components/activities/MemberActivities';
 import { useAuthStore } from '@/features/auth-store';
 import { useLogout } from '@/hooks/use-auth';
 import { useMyMember } from '@/hooks/use-members';
@@ -21,19 +22,14 @@ const STATUS_COPY = {
 
 const COMING_SOON = [
   {
-    icon: CalendarDays,
-    title: 'Calendario de actividades',
-    text: 'Jornadas de tiro, clases de la escuela y salidas del club.',
-  },
-  {
     icon: Trophy,
     title: 'Inscripciones a torneos',
     text: 'Inscríbete en los campeonatos y consulta tus resultados.',
   },
 ];
 
-/// Área del socio. Por ahora muestra el estado de la inscripción; aquí irán el
-/// calendario y las inscripciones a torneos.
+/// Área del socio: estado de la inscripción y calendario de actividades, donde
+/// confirma asistencia. Aquí irán también las inscripciones a torneos.
 export function MemberAreaPage() {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
@@ -43,7 +39,7 @@ export function MemberAreaPage() {
   const status = member ? STATUS_COPY[member.status] : null;
 
   return (
-    <div className="container max-w-3xl py-10 md:py-14">
+    <div className="container max-w-4xl py-10 md:py-14">
       <Seo title="Mi cuenta" noindex />
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -79,7 +75,9 @@ export function MemberAreaPage() {
         </CardContent>
       </Card>
 
-      <h2 className="mb-4 text-lg font-semibold">Muy pronto</h2>
+      <MemberActivities />
+
+      <h2 className="mb-4 mt-12 text-lg font-semibold">Muy pronto</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         {COMING_SOON.map(({ icon: Icon, title, text }) => (
           <Card key={title} className="border-dashed">

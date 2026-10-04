@@ -22,7 +22,8 @@ export type BlockType =
   | 'GALLERY'
   | 'CARDS'
   | 'CTA'
-  | 'FAQ';
+  | 'FAQ'
+  | 'ACTIVITIES';
 
 export interface Block {
   id: string;
@@ -172,4 +173,86 @@ export interface Leaderboard {
   tournamentId: string;
   updatedAt: string;
   entries: LeaderboardEntry[];
+}
+
+// ---------- Actividades ----------
+
+export interface Place {
+  id: string;
+  name: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  isActive?: boolean;
+  _count?: { activities: number };
+}
+
+/// Lo que ven el home y los socios
+export interface PublicActivity {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  recommendations: string | null;
+  place: Place | null;
+  _count: { attendances: number };
+}
+
+export interface MemberActivity extends PublicActivity {
+  attending: boolean;
+}
+
+export interface Activity extends PublicActivity {
+  placeId: string | null;
+  notifyMembers: boolean;
+  notifiedAt: string | null;
+  notifiedCount: number | null;
+}
+
+export interface ActivityAttendee {
+  createdAt: string;
+  member: {
+    id: string;
+    memberNumber: number;
+    experience: string | null;
+    user: { name: string | null; surname: string | null; email: string };
+  };
+}
+
+export interface ActivityDetail extends Activity {
+  attendances: ActivityAttendee[];
+}
+
+export type WeatherStatus = 'good' | 'caution' | 'bad';
+
+export interface WeatherConditions {
+  code: number;
+  description: string;
+  tempMin: number;
+  tempMax: number;
+  precipitationProbability: number;
+  windMax: number;
+  gustsMax: number;
+}
+
+export type ActivityWeather =
+  | {
+      available: true;
+      date: string;
+      day: WeatherConditions;
+      during: WeatherConditions | null;
+      status: WeatherStatus;
+      statusLabel: string;
+      reasons: string[];
+      source: string;
+    }
+  | {
+      available: false;
+      reason: 'no_location' | 'out_of_range' | 'past' | 'error';
+      message: string;
+    };
+
+export interface ActivitiesData {
+  title?: string;
+  text?: string;
 }

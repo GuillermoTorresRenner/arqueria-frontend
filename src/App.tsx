@@ -38,6 +38,12 @@ const TournamentsAdminPage = lazy(() =>
   })),
 );
 
+const ActivitiesAdminPage = lazy(() =>
+  import('@/pages/admin/ActivitiesAdminPage').then((m) => ({
+    default: m.ActivitiesAdminPage,
+  })),
+);
+
 const UsersAdminPage = lazy(() =>
   import('@/pages/admin/UsersAdminPage').then((m) => ({
     default: m.UsersAdminPage,
@@ -95,6 +101,7 @@ export default function App() {
 
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<ContentAdminPage />} />
+              <Route path="actividades" element={<ActivitiesAdminPage />} />
               <Route path="socios" element={<MembersAdminPage />} />
               <Route path="torneos" element={<TournamentsAdminPage />} />
               <Route path="usuarios" element={<UsersAdminPage />} />

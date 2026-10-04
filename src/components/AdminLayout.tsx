@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link, Navigate } from 'react-router-dom';
-import { FileText, LogOut, ShieldCheck, Trophy, Users } from 'lucide-react';
+import { CalendarDays, FileText, LogOut, ShieldCheck, Trophy, Users } from 'lucide-react';
 import { useAuthStore } from '@/features/auth-store';
 import { useLogout } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,8 @@ import { LogoEmblem } from '@/components/Logo';
 
 const NAV = [
   { to: '/admin', label: 'Contenido', icon: FileText, end: true },
+  // El backend solo permite gestionar actividades al ADMIN
+  { to: '/admin/actividades', label: 'Actividades', icon: CalendarDays, end: false, adminOnly: true },
   { to: '/admin/socios', label: 'Socios', icon: Users, end: false },
   { to: '/admin/torneos', label: 'Torneos', icon: Trophy, end: false },
   // Solo ADMIN: el backend rechaza /users a cualquier otro rol
@@ -67,7 +69,8 @@ export function AdminLayout() {
           <nav
             className={cn(
               'grid gap-1 md:flex md:flex-col',
-              nav.length > 3 ? 'grid-cols-4' : 'grid-cols-3',
+              // Con cinco secciones, a 320px no caben en una fila: 3 + 2
+              nav.length > 4 ? 'grid-cols-3 sm:grid-cols-5' : nav.length > 3 ? 'grid-cols-4' : 'grid-cols-3',
             )}
           >
             {nav.map((item) => (

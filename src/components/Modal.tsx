@@ -1,7 +1,11 @@
-import { useEffect, useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+/// Modales abiertos, del más antiguo al más reciente: con uno encima de otro
+/// (lugares sobre actividad), Escape cierra solo el de arriba.
+const openModals: string[] = [];
 
 /// Diálogo modal del panel: Escape cierra, el fondo no hace scroll mientras
 /// está abierto y el título queda asociado para lectores de pantalla.
@@ -17,17 +21,27 @@ export function Modal({
   className?: string;
 }) {
   const titleId = useId();
+  // onClose suele ser una función nueva en cada render: se lee desde un ref
+  // para que el efecto corra solo al abrir y cerrar. Si se repitiera, el modal
+  // de abajo volvería a la cima de la pila al re-renderizarse.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    openModals.push(titleId);
+    const onKey = (e: KeyboardEvent) =>
+      e.key === 'Escape' &&
+      openModals[openModals.length - 1] === titleId &&
+      onCloseRef.current();
     document.addEventListener('keydown', onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
+      openModals.splice(openModals.indexOf(titleId), 1);
       document.body.style.overflow = overflow;
     };
-  }, [onClose]);
+  }, [titleId]);
 
   return (
     <div

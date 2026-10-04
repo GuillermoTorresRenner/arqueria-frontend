@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpdateBlock } from '@/hooks/use-content';
@@ -37,6 +38,10 @@ const FIELDS: Record<
   CARDS: [{ name: 'title', label: 'Título', type: 'text' }],
   GALLERY: [{ name: 'title', label: 'Título', type: 'text' }],
   FAQ: [{ name: 'title', label: 'Título', type: 'text' }],
+  ACTIVITIES: [
+    { name: 'title', label: 'Título', type: 'text' },
+    { name: 'text', label: 'Texto', type: 'textarea' },
+  ],
 };
 
 /// Los bloques con listas (tarjetas, preguntas) se editan como JSON hasta que
@@ -154,6 +159,16 @@ export function BlockEditor({
               )}
             </div>
           ))}
+
+          {block.type === 'ACTIVITIES' && (
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              Las actividades se agendan en{' '}
+              <Link to="/admin/actividades" className="font-medium text-foreground underline">
+                Actividades
+              </Link>
+              ; aquí se muestran las seis próximas.
+            </p>
+          )}
 
           {block.type === 'GALLERY' && (
             <div className="space-y-2">
