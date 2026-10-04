@@ -7,7 +7,6 @@ import { MailCheck, MailQuestion, Pencil, Plus, Search, Send, UserCheck, UserX }
 import { useConfirm } from '@/features/confirm-store';
 import {
   useCreateUser,
-  useSendAccessEmail,
   useSetUserActive,
   useStaffUsers,
   useUpdateUser,
@@ -56,7 +55,6 @@ export function UsersAdminPage() {
   const me = useAuthStore((s) => s.user);
   const { data: users, isLoading } = useStaffUsers();
   const setActive = useSetUserActive();
-  const sendAccess = useSendAccessEmail();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [query, setQuery] = useState('');
   const confirm = useConfirm();
@@ -69,35 +67,6 @@ export function UsersAdminPage() {
       [u.name, u.surname, u.email].some((field) => field?.toLowerCase().includes(w)),
     ),
   );
-
-  /// El admin nunca ve ni elige contraseñas: el usuario recibe un enlace.
-  const sendAccessEmail = async (user: User) => {
-    const ok = await confirm({
-      title: 'Enviar correo de acceso',
-      description: user.emailVerified ? (
-        <>
-          Se enviará a <strong className="text-foreground">{user.email}</strong> un enlace para
-          elegir una contraseña nueva. Su contraseña actual sigue valiendo hasta que la cambie.
-        </>
-      ) : (
-        <>
-          Se reenviará a <strong className="text-foreground">{user.email}</strong> la invitación
-          para crear su contraseña.
-        </>
-      ),
-      confirmLabel: 'Enviar correo',
-    });
-    if (!ok) return;
-    sendAccess.mutate(user.id, {
-      onSuccess: ({ sent, kind }) =>
-        sent
-          ? toast.success(
-              kind === 'invite' ? 'Invitación reenviada' : 'Enlace de recuperación enviado',
-            )
-          : toast.error('No se pudo enviar el correo. Revisa la configuración de email.'),
-      onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo enviar el correo')),
-    });
-  };
 
   const toggleActive = async (user: User) => {
     const name = fullName(user);
@@ -213,16 +182,6 @@ export function UsersAdminPage() {
                           onClick={() => setDialog({ kind: 'edit', user })}
                         >
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Enviar correo de acceso"
-                          aria-label={`Enviar correo de acceso a ${fullName(user)}`}
-                          onClick={() => sendAccessEmail(user)}
-                          disabled={sendAccess.isPending || !user.isActive}
-                        >
-                          <Send className="h-4 w-4" />
                         </Button>
                         {/* El backend también lo impide: nadie se desactiva a sí mismo */}
                         {!isMe && (

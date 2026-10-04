@@ -54,15 +54,6 @@ export const useUpdateUser = () =>
     api.patch(`/users/${id}`, body).then((r) => r.data),
   );
 
-/// «Enviar correo de acceso»: invitación si la cuenta no se activó, enlace de
-/// recuperación si ya está activa. El admin nunca elige la contraseña.
-export const useSendAccessEmail = () =>
-  useStaffMutation((id: string) =>
-    api
-      .post<{ kind: 'invite' | 'password_reset'; sent: boolean }>(`/users/${id}/access-email`)
-      .then((r) => r.data),
-  );
-
 /// Baja lógica: el usuario no puede entrar, pero conserva su histórico.
 export const useSetUserActive = () =>
   useStaffMutation(({ id, active }: { id: string; active: boolean }) =>

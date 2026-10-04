@@ -9,21 +9,20 @@ import { Label } from '@/components/ui/label';
 import { ImageField } from '@/components/admin/ImageField';
 import { GalleryEditor } from '@/components/admin/GalleryEditor';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import { CtaButtonField } from '@/components/admin/CtaButtonField';
 import type { Block, BlockType, GalleryData } from '@/types';
 
 /// Campos editables por tipo de bloque. Mantener esta tabla alineada con los
 /// tipos que renderiza BlockRenderer: si se añade uno allí, se añade aquí.
 const FIELDS: Record<
   BlockType,
-  { name: string; label: string; type: 'text' | 'textarea' | 'html' | 'image' }[]
+  { name: string; label: string; type: 'text' | 'textarea' | 'html' | 'image' | 'cta' }[]
 > = {
   HERO: [
     { name: 'title', label: 'Título', type: 'text' },
     { name: 'subtitle', label: 'Antetítulo', type: 'text' },
     { name: 'text', label: 'Texto', type: 'textarea' },
-    { name: 'ctaLabel', label: 'Texto del botón', type: 'text' },
-    { name: 'ctaHref', label: 'Enlace del botón (#unirse abre la inscripción)', type: 'text' },
-    { name: 'ctaIcon', label: 'Icono del botón (whatsapp)', type: 'text' },
+    { name: 'cta', label: 'Botón', type: 'cta' },
     { name: 'image', label: 'Imagen de fondo', type: 'image' },
   ],
   RICH_TEXT: [
@@ -33,9 +32,7 @@ const FIELDS: Record<
   CTA: [
     { name: 'title', label: 'Título', type: 'text' },
     { name: 'text', label: 'Texto', type: 'textarea' },
-    { name: 'ctaLabel', label: 'Texto del botón', type: 'text' },
-    { name: 'ctaHref', label: 'Enlace del botón (#unirse abre la inscripción)', type: 'text' },
-    { name: 'ctaIcon', label: 'Icono del botón (whatsapp)', type: 'text' },
+    { name: 'cta', label: 'Botón', type: 'cta' },
   ],
   CARDS: [{ name: 'title', label: 'Título', type: 'text' }],
   GALLERY: [{ name: 'title', label: 'Título', type: 'text' }],
@@ -119,7 +116,16 @@ export function BlockEditor({
           {fields.map((field) => (
             <div key={field.name} className="space-y-2">
               <Label htmlFor={field.name}>{field.label}</Label>
-              {field.type === 'image' ? (
+              {field.type === 'cta' ? (
+                <CtaButtonField
+                  id={field.name}
+                  label={String(data.ctaLabel ?? '')}
+                  href={String(data.ctaHref ?? '')}
+                  icon={String(data.ctaIcon ?? '')}
+                  surface={block.type === 'HERO' ? 'hero' : 'cta'}
+                  onChange={(patch) => setData((prev) => ({ ...prev, ...patch }))}
+                />
+              ) : field.type === 'image' ? (
                 <ImageField
                   id={field.name}
                   value={String(data[field.name] ?? '')}
