@@ -3,19 +3,35 @@ import { api } from '@/lib/api';
 import type {
   Activity,
   ActivityDetail,
+  ActivityType,
   ActivityWeather,
   MemberActivity,
+  PaymentInfo,
   Place,
   PublicActivity,
+  RegistrationStatus,
+  TournamentDocument,
 } from '@/types';
 
+/// Datos propios de un torneo al guardarlo
+export interface TournamentInput {
+  judgeIds: string[];
+  rules: string | null;
+  youtubeUrl: string | null;
+  registrationEnd: string | null;
+  maxParticipants: number | null;
+  paymentInfo: PaymentInfo | null;
+}
+
 export interface ActivityInput {
+  type: ActivityType;
   title: string;
   startsAt: string;
   endsAt: string;
   placeId: string | null;
   recommendations: string | null;
   notifyMembers?: boolean;
+  tournament?: TournamentInput;
 }
 
 export type PlaceInput = Pick<Place, 'name' | 'address' | 'latitude' | 'longitude'> & {
@@ -189,4 +205,66 @@ export async function reverseGeocode(lat: number, lon: number) {
   return (
     await api.get<GeocodingResult | null>('/places/reverse', { params: { lat, lon } })
   ).data;
+}
+
+// ---------- Torneos ----------
+
+/// Datos de pago del último torneo, para precargar uno nuevo
+export function usePaymentDefaults(enabled: boolean) {
+  return useQuery({
+    queryKey: ['activities', 'payment-defaults'],
+    queryFn: async () =>
+      (await api.get<PaymentInfo | null>('/activities/payment-defaults')).data,
+    enabled,
+    staleTime: Infinity,
+  });
+}
+
+export async function uploadTournamentDocument(activityId: string, file: File) {
+  const body = new FormData();
+  body.append('file', file);
+  return (await api.post<TournamentDocument>(`/activities/${activityId}/documents`, body)).data;
+}
+
+export function useDeleteDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/activities/documents/${id}`)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),
+  });
+}
+
+/// Preinscripción del socio (o su retiro)
+export function useTournamentRegistration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, register }: { id: string; register: boolean }) =>
+      (
+        await (register
+          ? api.post(`/activities/${id}/registration`)
+          : api.delete(`/activities/${id}/registration`))
+      ).data as { status: RegistrationStatus | null; emailSent?: boolean },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),
+  });
+}
+
+/// El admin confirma el pago (CONFIRMED) o devuelve a pendiente
+export function useSetRegistrationStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: 'PENDING' | 'CONFIRMED' }) =>
+      (await api.patch(`/activities/registrations/${id}`, { status })).data as {
+        status: RegistrationStatus;
+        emailSent: boolean | null;
+      },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),
+  });
+}
+
+export function useDeleteRegistration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/activities/registrations/${id}`)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),
+  });
 }

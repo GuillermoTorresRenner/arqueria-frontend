@@ -1,11 +1,21 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import DOMPurify from 'dompurify';
-import { Clock, MapPin, Users } from 'lucide-react';
+import { BookOpen, Clock, MapPin, PlayCircle, Ticket, Users } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { formatDay, formatTimeRange, mapUrl } from '@/lib/activities';
+import {
+  ACTIVITY_TYPES,
+  formatCLP,
+  formatDateTime,
+  formatDay,
+  formatTimeRange,
+  mapUrl,
+  youtubeId,
+} from '@/lib/activities';
 import { cn } from '@/lib/utils';
 import type { PublicActivity } from '@/types';
 import { ActivityWeatherPanel } from './WeatherInfo';
+import { TypeBadge } from './TypeBadge';
+import { TournamentInfoDialog } from './TournamentInfoDialog';
 
 const sanitize = (html: string) => DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
 
@@ -26,15 +36,22 @@ export function ActivityCard({
   /// Resalta la tarjeta (p. ej. cuando el socio ya confirmó)
   highlight?: boolean;
 }) {
+  const [infoOpen, setInfoOpen] = useState(false);
   const start = new Date(activity.startsAt);
-  const { place } = activity;
+  const { place, tournament } = activity;
   const attendees = activity._count.attendances;
+  const kind = ACTIVITY_TYPES[activity.type];
+  const hasInfo = Boolean(
+    tournament &&
+      (tournament.rules || tournament.documents.length > 0 || youtubeId(tournament.youtubeUrl)),
+  );
 
   return (
     <Card
       className={cn(
-        'flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md',
-        highlight && 'border-primary/60 ring-1 ring-primary/30',
+        'flex h-full flex-col overflow-hidden border-l-4 transition-shadow hover:shadow-md',
+        kind.stripe,
+        highlight && 'ring-1 ring-primary/40',
       )}
     >
       <div className="flex gap-4 p-5">
@@ -50,6 +67,7 @@ export function ActivityCard({
         </div>
 
         <div className="min-w-0 flex-1">
+          <TypeBadge type={activity.type} className="mb-1.5" />
           <h3 className="text-lg font-semibold leading-snug">{activity.title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{formatDay(start)}</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
@@ -73,10 +91,34 @@ export function ActivityCard({
                 </span>
               </li>
             )}
-            {attendees > 0 && (
+            {!tournament && attendees > 0 && (
               <li className="flex items-center gap-2">
                 <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {attendees === 1 ? '1 socio confirmado' : `${attendees} socios confirmados`}
+              </li>
+            )}
+            {tournament && tournament.fees.length > 0 && (
+              <li className="flex items-start gap-2">
+                <Ticket className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>
+                  {tournament.fees.map((f) => (
+                    <span key={f.label} className="block">
+                      {f.label}: <span className="font-medium text-foreground">{formatCLP(f.amount)}</span>
+                    </span>
+                  ))}
+                </span>
+              </li>
+            )}
+            {tournament && (tournament.registrationEnd || tournament.maxParticipants) && (
+              <li className="flex items-start gap-2 text-xs">
+                <Users className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>
+                  {tournament.registrationEnd &&
+                    `Inscripciones hasta ${formatDateTime(tournament.registrationEnd).toLowerCase()}`}
+                  {tournament.registrationEnd && tournament.maxParticipants && ' · '}
+                  {tournament.maxParticipants &&
+                    `${tournament._count.registrations}/${tournament.maxParticipants} cupos`}
+                </span>
               </li>
             )}
           </ul>
@@ -98,8 +140,31 @@ export function ActivityCard({
           </details>
         )}
 
+        {hasInfo && tournament && (
+          <button
+            type="button"
+            onClick={() => setInfoOpen(true)}
+            className="flex items-center gap-2 rounded-md border bg-secondary/30 px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent"
+          >
+            {youtubeId(tournament.youtubeUrl) ? (
+              <PlayCircle className="h-4 w-4 text-primary" aria-hidden="true" />
+            ) : (
+              <BookOpen className="h-4 w-4 text-primary" aria-hidden="true" />
+            )}
+            {youtubeId(tournament.youtubeUrl) ? 'Bases, reglamento y video' : 'Bases y reglamento'}
+          </button>
+        )}
+
         {footer && <div className="mt-auto pt-1">{footer}</div>}
       </div>
+
+      {infoOpen && tournament && (
+        <TournamentInfoDialog
+          activity={activity}
+          tournament={tournament}
+          onClose={() => setInfoOpen(false)}
+        />
+      )}
     </Card>
   );
 }

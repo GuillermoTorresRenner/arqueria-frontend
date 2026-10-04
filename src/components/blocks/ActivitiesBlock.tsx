@@ -56,7 +56,7 @@ export function ActivitiesBlock({ data }: { data: Record<string, unknown> }) {
               <Button asChild>
                 <Link to="/mi-cuenta#actividades">
                   <CalendarCheck className="h-4 w-4" aria-hidden="true" />
-                  Confirmar mi asistencia
+                  Confirmar asistencia o inscribirme
                 </Link>
               </Button>
             ) : user ? null : (
@@ -66,7 +66,7 @@ export function ActivitiesBlock({ data }: { data: Record<string, unknown> }) {
                   <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
                     Inicia sesión
                   </Link>{' '}
-                  para confirmar tu asistencia.
+                  para confirmar asistencia o inscribirte.
                 </span>
                 <span aria-hidden="true" className="hidden sm:inline">
                   ·

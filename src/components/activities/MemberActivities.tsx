@@ -5,6 +5,7 @@ import { useMemberActivities, useSetAttendance } from '@/hooks/use-activities';
 import { apiErrorMessage } from '@/lib/api';
 import { capitalize } from '@/lib/activities';
 import { ActivityCard } from '@/components/activities/ActivityCard';
+import { TournamentRegistrationBox } from '@/components/activities/TournamentRegistrationBox';
 import { Button } from '@/components/ui/button';
 import type { MemberActivity } from '@/types';
 
@@ -28,7 +29,8 @@ export function MemberActivities() {
     const key = capitalize(monthTitle.format(new Date(a.startsAt)));
     groups.set(key, [...(groups.get(key) ?? []), a]);
   }
-  const confirmed = data?.activities.filter((a) => a.attending).length ?? 0;
+  const confirmed =
+    data?.activities.filter((a) => a.attending || a.registration).length ?? 0;
 
   return (
     <section id="actividades" ref={ref} className="scroll-mt-24" aria-labelledby="member-activities">
@@ -69,9 +71,13 @@ export function MemberActivities() {
                   <ActivityCard
                     key={activity.id}
                     activity={activity}
-                    highlight={activity.attending}
+                    highlight={activity.attending || Boolean(activity.registration)}
                     footer={
-                      <AttendanceButton activity={activity} canAttend={data.canAttend} />
+                      activity.type === 'TOURNAMENT' && activity.tournament ? (
+                        <TournamentRegistrationBox activity={activity} canAttend={data.canAttend} />
+                      ) : (
+                        <AttendanceButton activity={activity} canAttend={data.canAttend} />
+                      )
                     }
                   />
                 ))}

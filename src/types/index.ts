@@ -187,22 +187,77 @@ export interface Place {
   _count?: { activities: number };
 }
 
+export type ActivityType = 'ACTIVITY' | 'EVENT' | 'TOURNAMENT';
+
+export interface Fee {
+  label: string;
+  amount: number;
+}
+
+export interface PaymentInfo {
+  bankName?: string;
+  accountType?: string;
+  accountNumber?: string;
+  holderName?: string;
+  holderRut?: string;
+  holderEmail?: string;
+  instructions?: string;
+  fees?: Fee[];
+}
+
+export interface TournamentDocument {
+  id: string;
+  name: string;
+  /// Relativa a public/ («documents/x.pdf»)
+  path: string;
+  mimeType: string;
+  size: number;
+}
+
+/// Lo público de un torneo: montos sí, cuenta bancaria no
+export interface PublicTournament {
+  id: string;
+  slug: string;
+  status: TournamentStatus;
+  rules: string | null;
+  youtubeUrl: string | null;
+  registrationEnd: string | null;
+  maxParticipants: number | null;
+  fees: Fee[];
+  documents: TournamentDocument[];
+  _count: { registrations: number };
+}
+
+export type RegistrationStatus = 'PENDING' | 'CONFIRMED' | 'WITHDRAWN';
+
 /// Lo que ven el home y los socios
 export interface PublicActivity {
   id: string;
+  type: ActivityType;
   title: string;
   startsAt: string;
   endsAt: string;
   recommendations: string | null;
   place: Place | null;
+  tournament: PublicTournament | null;
   _count: { attendances: number };
 }
 
 export interface MemberActivity extends PublicActivity {
   attending: boolean;
+  /// En los torneos el socio ve los datos de transferencia
+  tournament: (PublicTournament & { paymentInfo: PaymentInfo | null }) | null;
+  /// Su inscripción al torneo, si tiene
+  registration?: { status: RegistrationStatus; createdAt: string; confirmedAt: string | null } | null;
 }
 
-export interface Activity extends PublicActivity {
+export interface Activity extends Omit<PublicActivity, 'tournament'> {
+  tournament: {
+    id: string;
+    slug: string;
+    status: TournamentStatus;
+    _count: { registrations: number };
+  } | null;
   placeId: string | null;
   notifyMembers: boolean;
   notifiedAt: string | null;
@@ -219,8 +274,26 @@ export interface ActivityAttendee {
   };
 }
 
-export interface ActivityDetail extends Activity {
+export interface TournamentRegistration {
+  id: string;
+  status: RegistrationStatus;
+  createdAt: string;
+  confirmedAt: string | null;
+  confirmedBy: { name: string | null; surname: string | null } | null;
+  member: ActivityAttendee['member'];
+}
+
+export interface ActivityDetail extends Omit<Activity, 'tournament'> {
   attendances: ActivityAttendee[];
+  tournament:
+    | (Omit<PublicTournament, 'fees'> & {
+        paymentInfo: PaymentInfo | null;
+        judges: {
+          user: { id: string; name: string | null; surname: string | null; email: string; userRoles: Role };
+        }[];
+        registrations: TournamentRegistration[];
+      })
+    | null;
 }
 
 export type WeatherStatus = 'good' | 'caution' | 'bad';

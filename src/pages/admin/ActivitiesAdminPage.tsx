@@ -10,12 +10,20 @@ import {
   Users,
 } from 'lucide-react';
 import { useActivitiesRange } from '@/hooks/use-activities';
-import { capitalize, dayKey, formatDay, formatTime, formatTimeRange } from '@/lib/activities';
+import {
+  ACTIVITY_TYPES,
+  capitalize,
+  dayKey,
+  formatDay,
+  formatTime,
+  formatTimeRange,
+} from '@/lib/activities';
 import { cn } from '@/lib/utils';
 import { ActivityDialog } from '@/components/admin/ActivityDialog';
 import { PlacesDialog } from '@/components/admin/PlacesDialog';
 import { ActivityWeatherPanel } from '@/components/activities/WeatherInfo';
 import { Button } from '@/components/ui/button';
+import { TypeBadge } from '@/components/activities/TypeBadge';
 import type { Activity } from '@/types';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -84,8 +92,8 @@ export function ActivitiesAdminPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Actividades</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Agenda jornadas, clases y salidas. Los socios las ven en su cuenta y en la portada, y
-            pueden confirmar asistencia.
+            Agenda actividades, eventos y torneos. Los socios los ven en su cuenta y en la portada:
+            confirman asistencia o, en los torneos, se inscriben.
           </p>
         </div>
         <div className="flex gap-2">
@@ -194,11 +202,11 @@ export function ActivitiesAdminPage() {
                         onClick={() => openEdit(a)}
                         className={cn(
                           'flex w-full items-center gap-1 truncate rounded px-1.5 py-0.5 text-left text-xs font-medium transition-colors',
-                          new Date(a.endsAt) < new Date()
-                            ? 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            : 'bg-primary/15 text-foreground hover:bg-primary/25',
+                          ACTIVITY_TYPES[a.type].chip,
+                          // Las pasadas, atenuadas pero con su color
+                          new Date(a.endsAt) < new Date() && 'opacity-55',
                         )}
-                        title={`${formatTimeRange(a.startsAt, a.endsAt)} · ${a.title}`}
+                        title={`${ACTIVITY_TYPES[a.type].label} · ${formatTimeRange(a.startsAt, a.endsAt)} · ${a.title}`}
                       >
                         <span className="tabular-nums opacity-70">{formatTime(a.startsAt)}</span>
                         <span className="truncate">{a.title}</span>
@@ -214,7 +222,7 @@ export function ActivitiesAdminPage() {
                 {items.length > 0 && (
                   <div className="pointer-events-none relative mt-1 flex flex-wrap gap-0.5 md:hidden">
                     {items.slice(0, 4).map((a) => (
-                      <span key={a.id} className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      <span key={a.id} className={cn('h-1.5 w-1.5 rounded-full', ACTIVITY_TYPES[a.type].dot)} />
                     ))}
                   </div>
                 )}
@@ -223,9 +231,19 @@ export function ActivitiesAdminPage() {
           })}
         </div>
       </div>
-      <p className="mt-2 hidden text-xs text-muted-foreground md:block">
-        Doble clic en un día o el botón + para agendar; clic en una actividad para editarla.
-      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <ul className="flex flex-wrap gap-3" aria-label="Tipos">
+          {Object.values(ACTIVITY_TYPES).map((t) => (
+            <li key={t.label} className="inline-flex items-center gap-1.5">
+              <span className={cn('h-2.5 w-2.5 rounded-full', t.dot)} aria-hidden="true" />
+              {t.label}
+            </li>
+          ))}
+        </ul>
+        <p className="hidden md:block">
+          Doble clic en un día o el botón + para agendar; clic en una actividad para editarla.
+        </p>
+      </div>
 
       {/* Agenda del día elegido */}
       <section className="mt-8" aria-labelledby="day-agenda">
@@ -252,14 +270,22 @@ export function ActivitiesAdminPage() {
                 <button
                   type="button"
                   onClick={() => openEdit(a)}
-                  className="w-full rounded-lg border bg-card p-4 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className={cn(
+                    'w-full rounded-lg border border-l-4 bg-card p-4 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    ACTIVITY_TYPES[a.type].stripe,
+                  )}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p className="font-semibold">{a.title}</p>
+                    <p className="flex flex-wrap items-center gap-2 font-semibold">
+                      <TypeBadge type={a.type} />
+                      {a.title}
+                    </p>
                     <span className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <Users className="h-3.5 w-3.5" aria-hidden="true" />
-                        {a._count.attendances} confirmados
+                        {a.type === 'TOURNAMENT'
+                          ? `${a.tournament?._count.registrations ?? 0} inscripciones`
+                          : `${a._count.attendances} confirmados`}
                       </span>
                       {a.notifiedAt && (
                         <span className="inline-flex items-center gap-1 text-primary">

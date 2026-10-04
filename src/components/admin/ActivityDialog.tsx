@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Bell, BellRing, MapPin, Settings2, Trash2, Users } from 'lucide-react';
 import {
@@ -8,22 +8,38 @@ import {
   useNotifyActivity,
   usePlaces,
   useUpdateActivity,
+  usePaymentDefaults,
   useWeatherPreview,
+  uploadTournamentDocument,
   type ActivityInput,
+  type TournamentInput,
 } from '@/hooks/use-activities';
 import { useConfirm } from '@/features/confirm-store';
 import { apiErrorMessage } from '@/lib/api';
-import { fromLocalInputs, hasForecast, toLocalInputs } from '@/lib/activities';
+import {
+  ACTIVITY_TYPES,
+  fromLocalInputs,
+  hasForecast,
+  toLocalInputs,
+  youtubeId,
+} from '@/lib/activities';
 import { EXPERIENCE_OPTIONS } from '@/lib/join';
 import { cn } from '@/lib/utils';
 import { Modal } from '@/components/Modal';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { WeatherPanel } from '@/components/activities/WeatherInfo';
 import { PlacesDialog } from '@/components/admin/PlacesDialog';
+import { RegistrationsList } from '@/components/admin/RegistrationsList';
+import { TournamentFields } from '@/components/admin/TournamentFields';
+import {
+  EMPTY_TOURNAMENT,
+  paymentToForm,
+  type TournamentFormState,
+} from '@/lib/tournament-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Activity } from '@/types';
+import type { Activity, ActivityDetail, ActivityType } from '@/types';
 
 const SELECT =
   'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
@@ -37,6 +53,12 @@ const dateTimeFormat = new Intl.DateTimeFormat('es-CL', {
   minute: '2-digit',
   hourCycle: 'h23',
 });
+
+const SAVED_LABEL: Record<ActivityType, string> = {
+  ACTIVITY: 'Actividad agendada',
+  EVENT: 'Evento agendado',
+  TOURNAMENT: 'Torneo agendado',
+};
 
 const notifiedToast = (recipients: number) =>
   recipients === 0
@@ -58,15 +80,19 @@ export function ActivityDialog({
   defaultDate?: string;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<'details' | 'attendees'>('details');
-  // Datos al día (aviso enviado, asistentes) sin cerrar el diálogo
-  const { data: detail } = useActivityDetail(activity?.id ?? null);
-  const current = detail ?? activity;
-  const attendees = current?._count.attendances ?? 0;
+  const [tab, setTab] = useState<'details' | 'people'>('details');
+  // El formulario necesita el detalle completo (jueces, pago, documentos) y
+  // se mantiene al día (aviso enviado, inscripciones) sin cerrar el diálogo
+  const { data: detail, isLoading } = useActivityDetail(activity?.id ?? null);
+  const isTournament = detail?.type === 'TOURNAMENT';
+  const people = isTournament
+    ? `Inscripciones (${detail?.tournament?.registrations.length ?? 0})`
+    : `Asistentes (${detail?._count.attendances ?? activity?._count.attendances ?? 0})`;
+  const kind = ACTIVITY_TYPES[detail?.type ?? activity?.type ?? 'ACTIVITY'].label.toLowerCase();
 
   return (
     <Modal
-      title={activity ? 'Editar actividad' : 'Nueva actividad'}
+      title={activity ? `Editar ${kind}` : 'Agendar en el calendario'}
       onClose={onClose}
       className="max-w-3xl"
     >
@@ -75,7 +101,7 @@ export function ActivityDialog({
           {(
             [
               ['details', 'Detalles'],
-              ['attendees', `Asistentes (${attendees})`],
+              ['people', people],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -97,13 +123,37 @@ export function ActivityDialog({
         </div>
       )}
 
-      {activity && tab === 'attendees' ? (
-        <AttendeesList activityId={activity.id} />
+      {activity && (isLoading || !detail) ? (
+        <div className="space-y-4" aria-busy="true">
+          <div className="h-10 skeleton" />
+          <div className="h-40 skeleton" />
+        </div>
+      ) : activity && tab === 'people' ? (
+        isTournament ? (
+          <RegistrationsList registrations={detail?.tournament?.registrations ?? []} />
+        ) : (
+          <AttendeesList activityId={activity.id} />
+        )
       ) : (
-        <ActivityForm activity={current} defaultDate={defaultDate} onDone={onClose} />
+        <ActivityForm activity={detail ?? null} defaultDate={defaultDate} onDone={onClose} />
       )}
     </Modal>
   );
+}
+
+/// Ficha del torneo guardada → estado del formulario
+function tournamentToForm(t: ActivityDetail['tournament']): TournamentFormState {
+  if (!t) return EMPTY_TOURNAMENT;
+  const end = t.registrationEnd ? toLocalInputs(t.registrationEnd) : null;
+  return {
+    judgeIds: t.judges.map((j) => j.user.id),
+    rules: t.rules ?? '',
+    youtubeUrl: t.youtubeUrl ?? '',
+    registrationEndDate: end?.date ?? '',
+    registrationEndTime: end?.time ?? '23:59',
+    maxParticipants: t.maxParticipants ? String(t.maxParticipants) : '',
+    payment: paymentToForm(t.paymentInfo),
+  };
 }
 
 function ActivityForm({
@@ -111,12 +161,17 @@ function ActivityForm({
   defaultDate,
   onDone,
 }: {
-  activity: Activity | null;
+  activity: ActivityDetail | null;
   defaultDate?: string;
   onDone: () => void;
 }) {
   const start = activity ? toLocalInputs(activity.startsAt) : null;
   const end = activity ? toLocalInputs(activity.endsAt) : null;
+  const [type, setType] = useState<ActivityType>(activity?.type ?? 'ACTIVITY');
+  const [tournament, setTournament] = useState<TournamentFormState>(() =>
+    tournamentToForm(activity?.tournament ?? null),
+  );
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [title, setTitle] = useState(activity?.title ?? '');
   const [date, setDate] = useState(start?.date ?? defaultDate ?? '');
   const [startTime, setStartTime] = useState(start?.time ?? '10:00');
@@ -133,7 +188,62 @@ function ActivityForm({
   const notifyActivity = useNotifyActivity();
   const deleteActivity = useDeleteActivity();
   const confirm = useConfirm();
-  const saving = createActivity.isPending || updateActivity.isPending;
+  const [uploading, setUploading] = useState(false);
+  const saving = createActivity.isPending || updateActivity.isPending || uploading;
+  const isTournament = type === 'TOURNAMENT';
+
+  // Un torneo nuevo arranca con los datos de pago del anterior
+  const defaults = usePaymentDefaults(isTournament && !activity?.tournament);
+  const [prefilled, setPrefilled] = useState(false);
+  useEffect(() => {
+    if (prefilled || !defaults.data) return;
+    setPrefilled(true);
+    setTournament((t) => ({ ...t, payment: paymentToForm(defaults.data) }));
+  }, [defaults.data, prefilled]);
+
+  const patchTournament = (patch: Partial<TournamentFormState>) =>
+    setTournament((t) => ({ ...t, ...patch }));
+
+  /// Valida y arma la ficha del torneo; devuelve un mensaje si algo falla
+  const buildTournament = (): TournamentInput | string => {
+    const t = tournament;
+    if (t.youtubeUrl.trim() && !youtubeId(t.youtubeUrl)) {
+      return 'El enlace del video debe ser de YouTube';
+    }
+    // Filas vacías se ignoran; una a medio llenar es un error
+    const rows = t.payment.fees.filter((f) => f.label.trim() || f.amount);
+    if (rows.some((f) => !f.label.trim() || f.amount === '')) {
+      return 'Cada monto necesita un concepto y un valor';
+    }
+    const fees = rows.map((f) => ({ label: f.label.trim(), amount: Number(f.amount) }));
+    const max = t.maxParticipants ? Number(t.maxParticipants) : null;
+    if (max !== null && (!Number.isInteger(max) || max < 1)) return 'El cupo debe ser un número mayor que cero';
+    return {
+      judgeIds: t.judgeIds,
+      rules: t.rules || null,
+      youtubeUrl: t.youtubeUrl.trim() || null,
+      registrationEnd: t.registrationEndDate
+        ? fromLocalInputs(t.registrationEndDate, t.registrationEndTime || '23:59')
+        : null,
+      maxParticipants: max,
+      paymentInfo: { ...t.payment, fees },
+    };
+  };
+
+  /// Sube los reglamentos que esperaban a que el torneo existiera
+  const uploadPending = async (activityId: string) => {
+    if (!pendingFiles.length) return;
+    setUploading(true);
+    try {
+      for (const file of pendingFiles) await uploadTournamentDocument(activityId, file);
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Algún documento no se pudo subir'), {
+        description: 'Ábrelo de nuevo para intentarlo otra vez.',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Lugares activos y, al editar, el actual aunque esté desactivado
   const placeOptions = (places ?? []).filter((p) => p.isActive || p.id === activity?.placeId);
@@ -155,7 +265,16 @@ function ActivityForm({
     if (!date) return setError('Elige la fecha');
     if (!schedule) return setError('La hora de término debe ser posterior a la de inicio');
 
+    let tournamentInput: TournamentInput | undefined;
+    if (isTournament) {
+      const built = buildTournament();
+      if (typeof built === 'string') return setError(built);
+      tournamentInput = built;
+    }
+
     const input: ActivityInput = {
+      type,
+      tournament: tournamentInput,
       title: title.trim(),
       ...schedule,
       placeId: placeId || null,
@@ -177,8 +296,9 @@ function ActivityForm({
       createActivity.mutate(
         { ...input, notifyMembers: notify },
         {
-          onSuccess: (saved) => {
-            toast.success('Actividad agendada', {
+          onSuccess: async (saved) => {
+            await uploadPending(saved.id);
+            toast.success(SAVED_LABEL[type], {
               description: saved.notification
                 ? notifiedToast(saved.notification.recipients)
                 : undefined,
@@ -195,7 +315,7 @@ function ActivityForm({
       { id: activity.id, ...input, notifyMembers },
       {
         onSuccess: (saved) => {
-          toast.success('Actividad actualizada', {
+          toast.success('Cambios guardados', {
             description: saved.notification
               ? notifiedToast(saved.notification.recipients)
               : undefined,
@@ -225,12 +345,15 @@ function ActivityForm({
   const remove = async () => {
     if (!activity) return;
     const attendees = activity._count.attendances;
+    const registered = activity.tournament?.registrations.length ?? 0;
     const ok = await confirm({
       title: `¿Eliminar «${activity.title}»?`,
       description:
-        attendees > 0
-          ? `${attendees === 1 ? 'Un socio había' : `${attendees} socios habían`} confirmado asistencia. No se les avisará de la cancelación por correo.`
-          : 'No se puede deshacer.',
+        registered > 0
+          ? `Se borran el torneo, sus ${registered === 1 ? 'una inscripción' : `${registered} inscripciones`} y los reglamentos subidos. No se avisa a los inscritos por correo: si alguno ya pagó, gestiona la devolución.`
+          : attendees > 0
+            ? `${attendees === 1 ? 'Un socio había' : `${attendees} socios habían`} confirmado asistencia. No se les avisará de la cancelación por correo.`
+            : 'No se puede deshacer.',
       confirmLabel: 'Eliminar actividad',
       tone: 'danger',
     });
@@ -247,13 +370,56 @@ function ActivityForm({
   return (
     <>
       <form onSubmit={submit} className="space-y-5" noValidate>
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium">Tipo</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(ACTIVITY_TYPES) as ActivityType[]).map((key) => {
+              const t = ACTIVITY_TYPES[key];
+              // Un torneo con inscritos no puede cambiar de tipo
+              const locked =
+                activity?.type === 'TOURNAMENT' &&
+                key !== 'TOURNAMENT' &&
+                (activity.tournament?.registrations.length ?? 0) > 0;
+              return (
+                <label
+                  key={key}
+                  className={cn(
+                    'flex cursor-pointer flex-col items-center gap-1 rounded-md border p-2.5 text-center text-sm font-medium transition-colors has-[:checked]:ring-2 has-[:checked]:ring-primary sm:flex-row sm:justify-center sm:gap-2',
+                    type === key ? t.badge : 'hover:bg-accent',
+                    locked && 'cursor-not-allowed opacity-50',
+                  )}
+                  title={locked ? 'El torneo ya tiene inscritos' : undefined}
+                >
+                  <input
+                    type="radio"
+                    name="activity-type"
+                    value={key}
+                    checked={type === key}
+                    disabled={locked}
+                    onChange={() => setType(key)}
+                    className="sr-only"
+                  />
+                  <t.icon className="h-4 w-4" aria-hidden="true" />
+                  {t.label}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+
         <div className="space-y-2">
-          <Label htmlFor="activity-title">Actividad</Label>
+          <Label htmlFor="activity-title">Nombre</Label>
           <Input
             id="activity-title"
             value={title}
             maxLength={120}
-            placeholder="Jornada de tiro, clase de iniciación…"
+            placeholder={
+              isTournament
+                ? 'Copa Galadhrym de primavera'
+                : type === 'EVENT'
+                  ? 'Aniversario del club'
+                  : 'Jornada de tiro, clase de iniciación…'
+            }
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
@@ -345,6 +511,17 @@ function ActivityForm({
           />
         </div>
 
+        {isTournament && (
+          <TournamentFields
+            value={tournament}
+            onChange={patchTournament}
+            activityId={activity?.tournament ? activity.id : null}
+            documents={activity?.tournament?.documents ?? []}
+            pendingFiles={pendingFiles}
+            onPendingFiles={setPendingFiles}
+          />
+        )}
+
         {/* Aviso a los socios: la opción persiste en la actividad */}
         {activity && !ended && (
           <div className="rounded-md border bg-secondary/40 p-4 text-sm">
@@ -417,7 +594,7 @@ function ActivityForm({
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Guardando…' : activity ? 'Guardar cambios' : 'Agendar actividad'}
+              {saving ? 'Guardando…' : activity ? 'Guardar cambios' : `Agendar ${ACTIVITY_TYPES[type].label.toLowerCase()}`}
             </Button>
           </div>
         </div>

@@ -1,14 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Instagram, Mail } from 'lucide-react';
-import { LINKS } from '@/lib/links';
+import { CLUB_EMAIL, LINKS } from '@/lib/links';
 import { LogoFull } from '@/components/Logo';
 import { useJoinStore } from '@/features/join-store';
 
 const LINK =
   'rounded-sm text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
-
-/// Correo del club: el mismo desde el que salen los correos del sitio.
-const CLUB_EMAIL = 'arqueria.galadhrym@gmail.com';
 
 export function SiteFooter() {
   const openJoin = useJoinStore((s) => s.openJoin);
