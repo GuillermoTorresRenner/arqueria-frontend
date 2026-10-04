@@ -2,16 +2,20 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpdateBlock } from '@/hooks/use-content';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Block, BlockType } from '@/types';
+import { ImageField } from '@/components/admin/ImageField';
+import { GalleryEditor } from '@/components/admin/GalleryEditor';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import type { Block, BlockType, GalleryData } from '@/types';
 
 /// Campos editables por tipo de bloque. Mantener esta tabla alineada con los
 /// tipos que renderiza BlockRenderer: si se añade uno allí, se añade aquí.
 const FIELDS: Record<
   BlockType,
-  { name: string; label: string; type: 'text' | 'textarea' | 'html' }[]
+  { name: string; label: string; type: 'text' | 'textarea' | 'html' | 'image' }[]
 > = {
   HERO: [
     { name: 'title', label: 'Título', type: 'text' },
@@ -20,11 +24,11 @@ const FIELDS: Record<
     { name: 'ctaLabel', label: 'Texto del botón', type: 'text' },
     { name: 'ctaHref', label: 'Enlace del botón', type: 'text' },
     { name: 'ctaIcon', label: 'Icono del botón (whatsapp)', type: 'text' },
-    { name: 'image', label: 'Imagen de fondo (URL)', type: 'text' },
+    { name: 'image', label: 'Imagen de fondo', type: 'image' },
   ],
   RICH_TEXT: [
     { name: 'title', label: 'Título', type: 'text' },
-    { name: 'html', label: 'Contenido (HTML)', type: 'html' },
+    { name: 'html', label: 'Contenido', type: 'html' },
   ],
   CTA: [
     { name: 'title', label: 'Título', type: 'text' },
@@ -38,11 +42,10 @@ const FIELDS: Record<
   FAQ: [{ name: 'title', label: 'Título', type: 'text' }],
 };
 
-/// Los bloques con listas (tarjetas, imágenes, preguntas) se editan como JSON
-/// hasta que exista un editor de listas dedicado.
+/// Los bloques con listas (tarjetas, preguntas) se editan como JSON hasta que
+/// exista un editor de listas dedicado. GALLERY ya tiene el suyo.
 const LIST_FIELD: Partial<Record<BlockType, string>> = {
   CARDS: 'items',
-  GALLERY: 'images',
   FAQ: 'items',
 };
 
@@ -96,7 +99,13 @@ export function BlockEditor({
       aria-modal="true"
       aria-labelledby="block-editor-title"
     >
-      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border bg-card p-6 shadow-lg">
+      <div
+        className={cn(
+          'max-h-[90vh] w-full overflow-y-auto rounded-lg border bg-card p-4 shadow-lg sm:p-6',
+          // El editor de texto necesita ancho de página para escribir cómodo.
+          block.type === 'RICH_TEXT' ? 'max-w-3xl' : 'max-w-lg',
+        )}
+      >
         <div className="mb-6 flex items-center justify-between">
           <h2 id="block-editor-title" className="text-lg font-semibold">
             Editar bloque {block.type}
@@ -110,7 +119,19 @@ export function BlockEditor({
           {fields.map((field) => (
             <div key={field.name} className="space-y-2">
               <Label htmlFor={field.name}>{field.label}</Label>
-              {field.type === 'text' ? (
+              {field.type === 'image' ? (
+                <ImageField
+                  id={field.name}
+                  value={String(data[field.name] ?? '')}
+                  onChange={(value) => setField(field.name, value || null)}
+                />
+              ) : field.type === 'html' ? (
+                <RichTextEditor
+                  id={field.name}
+                  value={String(data[field.name] ?? '')}
+                  onChange={(html) => setField(field.name, html)}
+                />
+              ) : field.type === 'text' ? (
                 <Input
                   id={field.name}
                   value={String(data[field.name] ?? '')}
@@ -119,7 +140,7 @@ export function BlockEditor({
               ) : (
                 <textarea
                   id={field.name}
-                  rows={field.type === 'html' ? 8 : 3}
+                  rows={3}
                   value={String(data[field.name] ?? '')}
                   onChange={(e) => setField(field.name, e.target.value)}
                   className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -128,11 +149,19 @@ export function BlockEditor({
             </div>
           ))}
 
+          {block.type === 'GALLERY' && (
+            <div className="space-y-2">
+              <Label>Imágenes</Label>
+              <GalleryEditor
+                images={(data as GalleryData).images ?? []}
+                onChange={(images) => setField('images', images)}
+              />
+            </div>
+          )}
+
           {listField && (
             <div className="space-y-2">
-              <Label htmlFor={listField}>
-                {listField === 'images' ? 'Imágenes' : 'Elementos'} (JSON)
-              </Label>
+              <Label htmlFor={listField}>Elementos (JSON)</Label>
               <textarea
                 id={listField}
                 rows={10}

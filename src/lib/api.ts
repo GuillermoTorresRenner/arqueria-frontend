@@ -17,3 +17,15 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/// Mensaje legible de un error de la API. El backend responde
+/// `{ message: string | string[] }` (los errores de validación llegan como
+/// lista); si no hay nada útil, se usa el texto de respaldo.
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.message;
+    if (Array.isArray(message) && message.length) return message.join('. ');
+    if (typeof message === 'string' && message) return message;
+  }
+  return fallback;
+}

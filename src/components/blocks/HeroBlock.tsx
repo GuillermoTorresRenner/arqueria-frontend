@@ -1,4 +1,5 @@
 import { CtaLink } from './CtaLink';
+import { assetUrl } from '@/lib/assets';
 import type { HeroData } from '@/types';
 
 export function HeroBlock({ data }: { data: Record<string, unknown> }) {
@@ -7,22 +8,22 @@ export function HeroBlock({ data }: { data: Record<string, unknown> }) {
 
   return (
     <section className="surface-hero overflow-hidden border-b border-border/40">
+      {/* Fondo del texto: la misma foto desenfocada y velada. Da ambiente sin
+          competir con el texto, y como no tiene que verse entera, aquí sí
+          puede recortarse (object-cover). */}
       {image && (
-        <img
-          src={image}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover opacity-30"
-        />
+        <>
+          <img
+            src={assetUrl(image)}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl"
+          />
+          <div aria-hidden="true" className="absolute inset-0 bg-brand-ink/75" />
+        </>
       )}
 
-      {/* Velo cálido: funde la imagen con el tinta del afiche */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-br from-brand-ink/95 via-brand-ink/85 to-brand-sepia/40"
-      />
-
-      <div className="container relative py-20 md:py-28">
+      <div className="container relative py-14 md:py-20">
         <div className="max-w-2xl">
           {subtitle && (
             <p className="mb-3 text-sm font-medium uppercase tracking-[0.25em] text-brand-parchment/80">
@@ -52,6 +53,20 @@ export function HeroBlock({ data }: { data: Record<string, unknown> }) {
           )}
         </div>
       </div>
+
+      {/* La foto, entera: va bajo el texto y no detrás porque el club usa
+          panorámicas muy apaisadas (≈6:1) que, a pantalla completa detrás del
+          texto, perdían los laterales. Con object-contain y un alto máximo,
+          tampoco se recorta una foto vertical o 16:9. */}
+      {image && (
+        <div className="relative">
+          <img
+            src={assetUrl(image)}
+            alt=""
+            className="mx-auto block h-auto max-h-[70vh] w-full object-contain"
+          />
+        </div>
+      )}
     </section>
   );
 }

@@ -131,6 +131,65 @@
     @apply relative bg-[hsl(var(--brand-ink))] text-[hsl(40_60%_95%)];
   }
 
+  /* Texto con formato de los bloques RICH_TEXT. La comparten la web pública y
+     el editor del panel, para que lo que se ve al editar sea lo publicado. */
+  .rich-text {
+    @apply text-base leading-relaxed text-muted-foreground;
+  }
+  .rich-text > * + * {
+    @apply mt-4;
+  }
+  .rich-text h2 {
+    @apply mt-8 text-2xl font-bold tracking-tight text-foreground;
+  }
+  .rich-text h3 {
+    @apply mt-6 text-xl font-semibold text-foreground;
+  }
+  .rich-text strong {
+    @apply font-semibold text-foreground;
+  }
+  .rich-text a {
+    @apply text-primary underline underline-offset-2;
+  }
+  .rich-text ul {
+    @apply list-disc pl-6;
+  }
+  .rich-text ol {
+    @apply list-decimal pl-6;
+  }
+  .rich-text li + li,
+  .rich-text li > ul,
+  .rich-text li > ol {
+    @apply mt-1;
+  }
+  .rich-text blockquote {
+    @apply border-l-4 border-primary/60 pl-4 italic;
+  }
+  .rich-text code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-sm;
+  }
+  .rich-text hr {
+    @apply my-8 border-border;
+  }
+
+  /* Logo de Galadhrym. Los SVG de public/ se usan como máscara y el color lo
+     pone `currentColor`: tinta en claro, pergamino en oscuro, sin duplicar
+     archivos. El aspect-ratio es el del viewBox de cada SVG. */
+  .logo-emblem,
+  .logo-full {
+    @apply inline-block shrink-0 bg-current;
+    -webkit-mask: var(--logo-src) center / contain no-repeat;
+    mask: var(--logo-src) center / contain no-repeat;
+  }
+  .logo-emblem {
+    --logo-src: url('/logo-emblem.svg?v=1');
+    aspect-ratio: 1014 / 1534;
+  }
+  .logo-full {
+    --logo-src: url('/logo-full.svg?v=1');
+    aspect-ratio: 1880 / 2164;
+  }
+
   /* Filete rojo bajo los títulos, como en el afiche */
   .rule-vermilion::after {
     content: '';

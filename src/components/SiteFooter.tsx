@@ -1,6 +1,7 @@
-import { Instagram, Target } from 'lucide-react';
+import { Instagram } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/icons';
 import { LINKS } from '@/lib/links';
+import { LogoFull } from '@/components/Logo';
 
 const SOCIAL = [
   {
@@ -19,10 +20,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t bg-secondary/40">
       <div className="container flex flex-col items-center justify-between gap-6 py-10 sm:flex-row">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Target className="h-5 w-5 text-primary" aria-hidden="true" />
-          Galadhrym — Asociación de Arquería
-        </div>
+        <LogoFull className="h-24 text-foreground/90" />
 
         <div className="flex items-center gap-1">
           {SOCIAL.map(({ href, label, Icon }) => (

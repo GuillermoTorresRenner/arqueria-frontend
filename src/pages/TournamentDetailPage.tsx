@@ -145,9 +145,9 @@ export function TournamentDetailPage() {
                 <tr>
                   <th scope="col" className="table-th w-16">#</th>
                   <th scope="col" className="table-th">Arquero</th>
-                  <th scope="col" className="table-th text-right">Series</th>
-                  <th scope="col" className="table-th text-right">X</th>
-                  <th scope="col" className="table-th text-right">10s</th>
+                  <th scope="col" className="table-th hidden text-right sm:table-cell">Series</th>
+                  <th scope="col" className="table-th hidden text-right sm:table-cell">X</th>
+                  <th scope="col" className="table-th hidden text-right sm:table-cell">10s</th>
                   <th scope="col" className="table-th text-right">Total</th>
                 </tr>
               </thead>
@@ -163,18 +163,18 @@ export function TournamentDetailPage() {
                     <td className="table-td">
                       <span>{entry.name}</span>
                       {entry.categories.length > 0 && (
-                        <span className="ml-2 text-xs text-muted-foreground">
+                        <span className="block text-xs text-muted-foreground sm:ml-2 sm:inline">
                           {entry.categories.join(' · ')}
                         </span>
                       )}
                     </td>
-                    <td className="table-td table-num text-right">
+                    <td className="table-td table-num hidden text-right sm:table-cell">
                       {entry.endsShot}
                     </td>
-                    <td className="table-td table-num text-right">
+                    <td className="table-td table-num hidden text-right sm:table-cell">
                       {entry.innerTens}
                     </td>
-                    <td className="table-td table-num text-right">
+                    <td className="table-td table-num hidden text-right sm:table-cell">
                       {entry.tens}
                     </td>
                     <td className="px-4 py-3 text-right text-base font-semibold tabular-nums">

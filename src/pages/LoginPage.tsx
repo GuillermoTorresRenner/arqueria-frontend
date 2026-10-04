@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLogin } from '@/hooks/use-auth';
 import { useAuthStore } from '@/features/auth-store';
@@ -13,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Seo } from '@/components/Seo';
+import { LogoFull } from '@/components/Logo';
 
 const schema = z.object({
   email: z.string().email('Correo inválido'),
@@ -52,9 +52,8 @@ export function LoginPage() {
       <ThemeToggle className="absolute right-4 top-4" />
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <Link to="/" className="flex items-center gap-2 font-semibold">
-            <Target className="h-6 w-6 text-primary" aria-hidden="true" />
-            Galadhrym
+          <Link to="/" aria-label="Volver al inicio">
+            <LogoFull className="h-32" />
           </Link>
           <CardTitle className="pt-2">Acceder</CardTitle>
         </CardHeader>

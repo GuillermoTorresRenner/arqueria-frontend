@@ -72,33 +72,49 @@ export function MembersAdminPage() {
           <table className="table-base">
             <thead className="table-head">
               <tr>
-                <th scope="col" className="table-th w-16">Nº</th>
+                <th scope="col" className="table-th hidden w-16 sm:table-cell">Nº</th>
                 <th scope="col" className="table-th">Socio</th>
-                <th scope="col" className="table-th">Categorías</th>
-                <th scope="col" className="table-th">Estado</th>
+                <th scope="col" className="table-th hidden md:table-cell">Categorías</th>
+                <th scope="col" className="table-th hidden sm:table-cell">Estado</th>
                 <th scope="col" className="table-th text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {members?.map((member) => (
                 <tr key={member.id} className="table-row">
-                  <td className="table-td table-num">
+                  <td className="table-td table-num hidden sm:table-cell">
                     {member.memberNumber}
                   </td>
                   <td className="table-td">
                     <div className="font-medium">
+                      <span className="mr-1.5 text-muted-foreground tabular-nums sm:hidden">
+                        {member.memberNumber}.
+                      </span>
                       {member.user.name} {member.user.surname}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {member.user.email}
+                    {/* <wbr> tras la @: si no cabe, corta ahí y no a mitad de dominio */}
+                    <div className="break-words text-xs text-muted-foreground">
+                      {member.user.email.split('@')[0]}@<wbr />
+                      {member.user.email.split('@').slice(1).join('@')}
+                    </div>
+                    {/* En móvil, lo que no cabe en columnas va aquí debajo */}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 md:hidden">
+                      <Badge variant={STATUS[member.status].variant} className="sm:hidden">
+                        {STATUS[member.status].label}
+                      </Badge>
+                      {member.categories.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {member.categories.map((c) => c.category.label).join(' · ')}
+                        </span>
+                      )}
                     </div>
                   </td>
-                  <td className={cn('px-4 py-3 text-xs text-muted-foreground')}>
+                  <td className={cn('hidden px-4 py-3 text-xs text-muted-foreground md:table-cell')}>
                     {member.categories.length > 0
                       ? member.categories.map((c) => c.category.label).join(' · ')
                       : '—'}
                   </td>
-                  <td className="table-td">
+                  <td className="table-td hidden sm:table-cell">
                     <Badge variant={STATUS[member.status].variant}>
                       {STATUS[member.status].label}
                     </Badge>

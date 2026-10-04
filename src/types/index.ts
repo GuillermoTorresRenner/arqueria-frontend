@@ -8,6 +8,7 @@ export interface User {
   role: Role;
   avatar: string | null;
   isActive: boolean;
+  phone?: string | null;
 }
 
 // ---------- Contenido (CMS) ----------

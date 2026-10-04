@@ -30,6 +30,10 @@ export function useLeaderboard(tournamentId: string | undefined) {
 export function useAdminTournaments() {
   return useQuery({
     queryKey: ['tournaments', 'admin'],
-    queryFn: async () => (await api.get<Tournament[]>('/tournaments')).data,
+    // El listado de admin es paginado ({ data, pagination }). Un club no
+    // acumula más de 100 torneos en años, así que se pide todo de una vez.
+    queryFn: async () =>
+      (await api.get<{ data: Tournament[] }>('/tournaments', { params: { limit: 100 } }))
+        .data.data,
   });
 }

@@ -9,6 +9,7 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel';
 import { cn } from '@/lib/utils';
+import { assetUrl } from '@/lib/assets';
 import type { GalleryData } from '@/types';
 
 /**
@@ -61,7 +62,7 @@ export function GalleryBlock({ data }: { data: Record<string, unknown> }) {
             <CarouselItem key={index} className="pl-0">
               <figure className="overflow-hidden rounded-lg border bg-muted">
                 <img
-                  src={image.src}
+                  src={assetUrl(image.src)}
                   alt={image.alt ?? ''}
                   onError={(e) => {
                     // Una imagen rota no debe dejar un hueco: se oculta y el

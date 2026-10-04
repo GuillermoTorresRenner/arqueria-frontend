@@ -84,12 +84,12 @@ export function ContentAdminPage() {
                   {section.isActive ? (
                     <>
                       <Eye className="h-4 w-4" aria-hidden="true" />
-                      Visible
+                      <span className="sr-only sm:not-sr-only">Visible</span>
                     </>
                   ) : (
                     <>
                       <EyeOff className="h-4 w-4" aria-hidden="true" />
-                      Oculta
+                      <span className="sr-only sm:not-sr-only">Oculta</span>
                     </>
                   )}
                 </Button>
@@ -105,11 +105,11 @@ export function ContentAdminPage() {
                   {section.blocks.map((block) => (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between rounded-md border px-4 py-3"
+                      className="flex items-center justify-between gap-2 rounded-md border px-3 py-3 sm:px-4"
                     >
-                      <div className="min-w-0">
-                        <Badge variant="secondary">{block.type}</Badge>
-                        <span className="ml-3 truncate text-sm text-muted-foreground">
+                      <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                        <Badge variant="secondary" className="w-fit">{block.type}</Badge>
+                        <span className="truncate text-sm text-muted-foreground">
                           {String(
                             (block.data as Record<string, unknown>).title ??
                               (block.data as Record<string, unknown>).question ??
@@ -142,7 +142,7 @@ export function ContentAdminPage() {
                           onClick={() => setEditing(block)}
                         >
                           <Pencil className="h-4 w-4" aria-hidden="true" />
-                          Editar
+                          <span className="sr-only sm:not-sr-only">Editar</span>
                         </Button>
                       </div>
                     </div>

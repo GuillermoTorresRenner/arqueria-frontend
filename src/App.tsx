@@ -37,6 +37,12 @@ const TournamentsAdminPage = lazy(() =>
   })),
 );
 
+const UsersAdminPage = lazy(() =>
+  import('@/pages/admin/UsersAdminPage').then((m) => ({
+    default: m.UsersAdminPage,
+  })),
+);
+
 function RouteFallback() {
   return (
     <div className="container py-24" aria-busy="true">
@@ -75,6 +81,7 @@ export default function App() {
               <Route index element={<ContentAdminPage />} />
               <Route path="socios" element={<MembersAdminPage />} />
               <Route path="torneos" element={<TournamentsAdminPage />} />
+              <Route path="usuarios" element={<UsersAdminPage />} />
             </Route>
           </Routes>
         </Suspense>

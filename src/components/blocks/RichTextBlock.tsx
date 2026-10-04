@@ -1,4 +1,9 @@
+import DOMPurify from 'dompurify';
 import type { RichTextData } from '@/types';
+
+/// El editor abre los enlaces en otra pestaña (con rel="noopener"); DOMPurify
+/// quita `target` por defecto, así que se permite explícitamente.
+const sanitize = (html: string) => DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
 
 export function RichTextBlock({ data }: { data: Record<string, unknown> }) {
   const { title, html } = data as RichTextData;
@@ -10,11 +15,11 @@ export function RichTextBlock({ data }: { data: Record<string, unknown> }) {
           <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl">{title}</h2>
         )}
         {html && (
-          // El HTML lo escribe un admin autenticado desde el panel, no un
-          // visitante anónimo: la superficie de XSS es la del propio equipo.
+          // El HTML lo escribe el admin, pero se sanea igual: una sesión de
+          // admin robada no debe poder inyectar scripts a todos los visitantes.
           <div
-            className="space-y-4 text-base leading-relaxed text-muted-foreground [&_a]:text-primary [&_a]:underline [&_strong]:text-foreground"
-            dangerouslySetInnerHTML={{ __html: html }}
+            className="rich-text"
+            dangerouslySetInnerHTML={{ __html: sanitize(html) }}
           />
         )}
       </div>
