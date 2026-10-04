@@ -31,9 +31,13 @@ jobs:
         run: npm run lint -- --max-warnings 0
 
       - name: Write environment file
+        # El secret entra como variable de entorno y se escribe literal: con
+        # echo "${{ secrets... }}" bash interpretaba `comillas invertidas` y $.
+        env:
+          ENV_VARS: ${{ secrets.QA_ENV_VARS }}
         run: |
           echo "DOCKERHUB_REPOSITORY=$DOCKERHUB_REPOSITORY" > .env
-          echo "${{ secrets.QA_ENV_VARS }}" >> .env
+          printf '%s\n' "$ENV_VARS" >> .env
 
       - name: Extract build-time variables
         id: vars
