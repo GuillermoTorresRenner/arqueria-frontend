@@ -46,6 +46,11 @@ export function GalleryBlock({ data }: { data: Record<string, unknown> }) {
 
   if (images.length === 0) return null;
 
+  // Ocupa el mismo ancho que el resto de bloques: varias fotos por vista para
+  // que no midan 800 px de alto. Con una o dos se reparten el ancho entero.
+  const perView =
+    images.length >= 3 ? 'sm:basis-1/2 lg:basis-1/3' : images.length === 2 ? 'sm:basis-1/2' : '';
+
   return (
     <section className="section">
       {title && <h2 className="section-title mb-10 text-center">{title}</h2>}
@@ -54,12 +59,12 @@ export function GalleryBlock({ data }: { data: Record<string, unknown> }) {
         setApi={setApi}
         opts={{ loop: images.length > 1, align: 'start', containScroll: 'trimSnaps' }}
         plugins={prefersReducedMotion ? [] : [autoplay.current]}
-        className="mx-auto w-full max-w-4xl [&>div]:overflow-hidden [&>div]:rounded-lg"
+        className="w-full"
         aria-label={title ?? 'Galería de imágenes'}
       >
-        <CarouselContent className="ml-0">
+        <CarouselContent className="-ml-4">
           {images.map((image, index) => (
-            <CarouselItem key={index} className="pl-0">
+            <CarouselItem key={index} className={cn('pl-4', perView)}>
               <figure className="overflow-hidden rounded-lg border bg-muted">
                 <img
                   src={assetUrl(image.src)}
@@ -75,7 +80,13 @@ export function GalleryBlock({ data }: { data: Record<string, unknown> }) {
                   decoding="async"
                   width={1200}
                   height={800}
-                  className="aspect-[3/2] w-full object-cover"
+                  className={cn(
+                    'aspect-[3/2] w-full',
+                    // Una sola foto ocupa todo el ancho: se muestra entera en
+                    // un marco apaisado en vez de recortarla (las fotos del
+                    // club no siempre son horizontales).
+                    images.length === 1 ? 'object-contain md:aspect-[21/9]' : 'object-cover',
+                  )}
                 />
                 {image.alt && (
                   <figcaption className="px-4 py-3 text-sm text-muted-foreground">
@@ -87,7 +98,7 @@ export function GalleryBlock({ data }: { data: Record<string, unknown> }) {
           ))}
         </CarouselContent>
 
-        {images.length > 1 && (
+        {count > 1 && (
           <>
             <CarouselPrevious />
             <CarouselNext />

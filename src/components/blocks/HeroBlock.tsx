@@ -59,11 +59,11 @@ export function HeroBlock({ data }: { data: Record<string, unknown> }) {
           texto, perdían los laterales. Con object-contain y un alto máximo,
           tampoco se recorta una foto vertical o 16:9. */}
       {image && (
-        <div className="relative">
+        <div className="container relative pb-12 md:pb-16">
           <img
             src={assetUrl(image)}
             alt=""
-            className="mx-auto block h-auto max-h-[70vh] w-full object-contain"
+            className="block h-auto max-h-[70vh] w-full rounded-lg object-contain"
           />
         </div>
       )}

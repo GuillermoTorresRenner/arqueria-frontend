@@ -6,11 +6,11 @@ export function FaqBlock({ data }: { data: Record<string, unknown> }) {
 
   return (
     <section className="section">
-      <div className="mx-auto max-w-3xl">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-16">
         {title && (
-          <h2 className="mb-8 text-3xl font-bold tracking-tight md:text-4xl">{title}</h2>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{title}</h2>
         )}
-        <dl className="divide-y rounded-lg border">
+        <dl className="divide-y rounded-lg border lg:col-start-2">
           {items.map((item, index) => (
             <div key={index} className="p-6">
               <dt className="font-semibold">{item.question}</dt>
