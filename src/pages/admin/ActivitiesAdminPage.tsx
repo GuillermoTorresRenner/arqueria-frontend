@@ -12,6 +12,7 @@ import {
 import { useActivitiesRange } from '@/hooks/use-activities';
 import {
   ACTIVITY_TYPES,
+  CANCELLED_LABEL,
   capitalize,
   dayKey,
   formatDay,
@@ -24,6 +25,7 @@ import { PlacesDialog } from '@/components/admin/PlacesDialog';
 import { ActivityWeatherPanel } from '@/components/activities/WeatherInfo';
 import { Button } from '@/components/ui/button';
 import { TypeBadge } from '@/components/activities/TypeBadge';
+import { CancelledBadge } from '@/components/activities/CancelledNotice';
 import type { Activity } from '@/types';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -205,8 +207,10 @@ export function ActivitiesAdminPage() {
                           ACTIVITY_TYPES[a.type].chip,
                           // Las pasadas, atenuadas pero con su color
                           new Date(a.endsAt) < new Date() && 'opacity-55',
+                          // Las canceladas, tachadas
+                          a.cancelledAt && 'line-through decoration-destructive decoration-2 opacity-70',
                         )}
-                        title={`${ACTIVITY_TYPES[a.type].label} · ${formatTimeRange(a.startsAt, a.endsAt)} · ${a.title}`}
+                        title={`${a.cancelledAt ? `${CANCELLED_LABEL[a.type]} · ` : `${ACTIVITY_TYPES[a.type].label} · `}${formatTimeRange(a.startsAt, a.endsAt)} · ${a.title}`}
                       >
                         <span className="tabular-nums opacity-70">{formatTime(a.startsAt)}</span>
                         <span className="truncate">{a.title}</span>
@@ -222,7 +226,13 @@ export function ActivitiesAdminPage() {
                 {items.length > 0 && (
                   <div className="pointer-events-none relative mt-1 flex flex-wrap gap-0.5 md:hidden">
                     {items.slice(0, 4).map((a) => (
-                      <span key={a.id} className={cn('h-1.5 w-1.5 rounded-full', ACTIVITY_TYPES[a.type].dot)} />
+                      <span
+                        key={a.id}
+                        className={cn(
+                          'h-1.5 w-1.5 rounded-full',
+                          a.cancelledAt ? 'bg-destructive/40 ring-1 ring-destructive' : ACTIVITY_TYPES[a.type].dot,
+                        )}
+                      />
                     ))}
                   </div>
                 )}
@@ -239,6 +249,10 @@ export function ActivitiesAdminPage() {
               {t.label}
             </li>
           ))}
+          <li className="inline-flex items-center gap-1.5">
+            <span className="line-through decoration-destructive decoration-2">Abc</span>
+            Cancelada
+          </li>
         </ul>
         <p className="hidden md:block">
           Doble clic en un día o el botón + para agendar; clic en una actividad para editarla.
@@ -278,14 +292,21 @@ export function ActivitiesAdminPage() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="flex flex-wrap items-center gap-2 font-semibold">
                       <TypeBadge type={a.type} />
-                      {a.title}
+                      {a.cancelledAt && <CancelledBadge type={a.type} />}
+                      <span className={cn(a.cancelledAt && 'line-through decoration-destructive')}>
+                        {a.title}
+                      </span>
                     </p>
                     <span className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <Users className="h-3.5 w-3.5" aria-hidden="true" />
                         {a.type === 'TOURNAMENT'
-                          ? `${a.tournament?._count.registrations ?? 0} inscripciones`
-                          : `${a._count.attendances} confirmados`}
+                          ? (a.tournament?._count.registrations ?? 0) === 1
+                            ? '1 inscripción'
+                            : `${a.tournament?._count.registrations ?? 0} inscripciones`
+                          : a._count.attendances === 1
+                            ? '1 confirmado'
+                            : `${a._count.attendances} confirmados`}
                       </span>
                       {a.notifiedAt && (
                         <span className="inline-flex items-center gap-1 text-primary">
@@ -307,7 +328,13 @@ export function ActivitiesAdminPage() {
                       </span>
                     )}
                   </p>
-                  <ActivityWeatherPanel activity={a} compact className="mt-3" />
+                  {a.cancelledAt ? (
+                    a.cancellationReason && (
+                      <p className="mt-2 text-sm text-destructive">Causal: {a.cancellationReason}</p>
+                    )
+                  ) : (
+                    <ActivityWeatherPanel activity={a} compact className="mt-3" />
+                  )}
                 </button>
               </li>
             ))}

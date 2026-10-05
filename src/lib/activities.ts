@@ -109,6 +109,13 @@ export const ACTIVITY_TYPES: Record<
   },
 };
 
+/// «Actividad cancelada», «Evento cancelado», «Torneo cancelado»
+export const CANCELLED_LABEL: Record<ActivityType, string> = {
+  ACTIVITY: 'Actividad cancelada',
+  EVENT: 'Evento cancelado',
+  TOURNAMENT: 'Torneo cancelado',
+};
+
 const clp = new Intl.NumberFormat('es-CL', {
   style: 'currency',
   currency: 'CLP',

@@ -16,6 +16,7 @@ import type { PublicActivity } from '@/types';
 import { ActivityWeatherPanel } from './WeatherInfo';
 import { TypeBadge } from './TypeBadge';
 import { TournamentInfoDialog } from './TournamentInfoDialog';
+import { CancelledBadge, CancelledNotice } from './CancelledNotice';
 
 const sanitize = (html: string) => DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
 
@@ -41,6 +42,7 @@ export function ActivityCard({
   const { place, tournament } = activity;
   const attendees = activity._count.attendances;
   const kind = ACTIVITY_TYPES[activity.type];
+  const cancelled = Boolean(activity.cancelledAt);
   const hasInfo = Boolean(
     tournament &&
       (tournament.rules || tournament.documents.length > 0 || youtubeId(tournament.youtubeUrl)),
@@ -50,8 +52,8 @@ export function ActivityCard({
     <Card
       className={cn(
         'flex h-full flex-col overflow-hidden border-l-4 transition-shadow hover:shadow-md',
-        kind.stripe,
-        highlight && 'ring-1 ring-primary/40',
+        cancelled ? 'border-l-destructive bg-muted/30' : kind.stripe,
+        highlight && !cancelled && 'ring-1 ring-primary/40',
       )}
     >
       <div className="flex gap-4 p-5">
@@ -67,8 +69,18 @@ export function ActivityCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <TypeBadge type={activity.type} className="mb-1.5" />
-          <h3 className="text-lg font-semibold leading-snug">{activity.title}</h3>
+          <div className="mb-1.5 flex flex-wrap gap-1.5">
+            <TypeBadge type={activity.type} />
+            {cancelled && <CancelledBadge type={activity.type} />}
+          </div>
+          <h3
+            className={cn(
+              'text-lg font-semibold leading-snug',
+              cancelled && 'text-muted-foreground line-through decoration-destructive',
+            )}
+          >
+            {activity.title}
+          </h3>
           <p className="mt-1 text-sm text-muted-foreground">{formatDay(start)}</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
             <li className="flex items-center gap-2">
@@ -126,7 +138,11 @@ export function ActivityCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-3 px-5 pb-5">
-        <ActivityWeatherPanel activity={activity} compact />
+        {cancelled ? (
+          <CancelledNotice type={activity.type} reason={activity.cancellationReason} />
+        ) : (
+          <ActivityWeatherPanel activity={activity} compact />
+        )}
 
         {activity.recommendations && (
           <details className="group rounded-md border bg-secondary/30 text-sm">
@@ -155,7 +171,8 @@ export function ActivityCard({
           </button>
         )}
 
-        {footer && <div className="mt-auto pt-1">{footer}</div>}
+        {/* Cancelada: no hay nada que confirmar ni inscribir */}
+        {footer && !cancelled && <div className="mt-auto pt-1">{footer}</div>}
       </div>
 
       {infoOpen && tournament && (

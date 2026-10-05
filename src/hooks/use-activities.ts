@@ -268,3 +268,18 @@ export function useDeleteRegistration() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),
   });
 }
+
+// ---------- Cancelación ----------
+
+export function useCancelActivity() {
+  return useActivitiesMutation(
+    async ({ id, ...body }: { id: string; reason?: string; notify?: boolean }) =>
+      (await api.post<SavedActivity>(`/activities/${id}/cancel`, body)).data,
+  );
+}
+
+export function useRestoreActivity() {
+  return useActivitiesMutation(
+    async (id: string) => (await api.post<SavedActivity>(`/activities/${id}/restore`)).data,
+  );
+}

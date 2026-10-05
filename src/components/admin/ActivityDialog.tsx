@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Bell, BellRing, MapPin, Settings2, Trash2, Users } from 'lucide-react';
+import { Ban, Bell, BellRing, MapPin, RotateCcw, Settings2, Trash2, Users } from 'lucide-react';
 import {
   useActivityDetail,
   useCreateActivity,
@@ -9,6 +9,7 @@ import {
   usePlaces,
   useUpdateActivity,
   usePaymentDefaults,
+  useRestoreActivity,
   useWeatherPreview,
   uploadTournamentDocument,
   type ActivityInput,
@@ -30,6 +31,8 @@ import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { WeatherPanel } from '@/components/activities/WeatherInfo';
 import { PlacesDialog } from '@/components/admin/PlacesDialog';
 import { RegistrationsList } from '@/components/admin/RegistrationsList';
+import { CancelActivityDialog } from '@/components/admin/CancelActivityDialog';
+import { CancelledNotice } from '@/components/activities/CancelledNotice';
 import { TournamentFields } from '@/components/admin/TournamentFields';
 import {
   EMPTY_TOURNAMENT,
@@ -181,6 +184,9 @@ function ActivityForm({
   const [notifyMembers, setNotifyMembers] = useState(activity?.notifyMembers ?? false);
   const [error, setError] = useState<string | null>(null);
   const [placesOpen, setPlacesOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const restoreActivity = useRestoreActivity();
+  const cancelled = Boolean(activity?.cancelledAt);
 
   const { data: places } = usePlaces();
   const createActivity = useCreateActivity();
@@ -342,6 +348,23 @@ function ActivityForm({
     });
   };
 
+  const restore = async () => {
+    if (!activity) return;
+    const ok = await confirm({
+      title: `¿Reactivar «${activity.title}»?`,
+      description:
+        activity.type === 'TOURNAMENT'
+          ? 'Vuelve a estar vigente y se reabren las inscripciones. No se envía ningún correo: si quieres, avisa a los socios después.'
+          : 'Vuelve a estar vigente. No se envía ningún correo: si quieres, avisa a los socios después.',
+      confirmLabel: 'Reactivar',
+    });
+    if (!ok) return;
+    restoreActivity.mutate(activity.id, {
+      onSuccess: () => toast.success('Reactivada'),
+      onError: (err) => toast.error(apiErrorMessage(err, 'No se pudo reactivar')),
+    });
+  };
+
   const remove = async () => {
     if (!activity) return;
     const attendees = activity._count.attendances;
@@ -370,6 +393,21 @@ function ActivityForm({
   return (
     <>
       <form onSubmit={submit} className="space-y-5" noValidate>
+        {activity && cancelled && (
+          <div className="space-y-3">
+            <CancelledNotice type={activity.type} reason={activity.cancellationReason} />
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={restore} disabled={restoreActivity.isPending}>
+                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                Reactivar
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setCancelOpen(true)}>
+                Editar causal
+              </Button>
+            </div>
+          </div>
+        )}
+
         <fieldset>
           <legend className="mb-2 text-sm font-medium">Tipo</legend>
           <div className="grid grid-cols-3 gap-2">
@@ -523,7 +561,7 @@ function ActivityForm({
         )}
 
         {/* Aviso a los socios: la opción persiste en la actividad */}
-        {activity && !ended && (
+        {activity && !ended && !cancelled && (
           <div className="rounded-md border bg-secondary/40 p-4 text-sm">
             {activity.notifiedAt ? (
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -577,21 +615,34 @@ function ActivityForm({
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
           {activity ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={remove}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-              Eliminar
-            </Button>
+            <div className="flex flex-wrap gap-1">
+              {!cancelled && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setCancelOpen(true)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Ban className="h-4 w-4" aria-hidden="true" />
+                  Cancelar {ACTIVITY_TYPES[activity.type].label.toLowerCase()}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={remove}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Eliminar
+              </Button>
+            </div>
           ) : (
             <span />
           )}
           <div className="flex flex-col-reverse gap-2 sm:flex-row">
             <Button type="button" variant="outline" onClick={onDone}>
-              Cancelar
+              Cerrar
             </Button>
             <Button type="submit" disabled={saving}>
               {saving ? 'Guardando…' : activity ? 'Guardar cambios' : `Agendar ${ACTIVITY_TYPES[type].label.toLowerCase()}`}
@@ -599,6 +650,10 @@ function ActivityForm({
           </div>
         </div>
       </form>
+
+      {cancelOpen && activity && (
+        <CancelActivityDialog activity={activity} onClose={() => setCancelOpen(false)} />
+      )}
 
       {placesOpen && (
         <PlacesDialog

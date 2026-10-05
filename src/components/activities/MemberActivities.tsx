@@ -30,7 +30,7 @@ export function MemberActivities() {
     groups.set(key, [...(groups.get(key) ?? []), a]);
   }
   const confirmed =
-    data?.activities.filter((a) => a.attending || a.registration).length ?? 0;
+    data?.activities.filter((a) => !a.cancelledAt && (a.attending || a.registration)).length ?? 0;
 
   return (
     <section id="actividades" ref={ref} className="scroll-mt-24" aria-labelledby="member-activities">

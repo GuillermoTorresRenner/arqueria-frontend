@@ -235,6 +235,9 @@ export interface PublicActivity {
   id: string;
   type: ActivityType;
   title: string;
+  /// Cancelada: sigue visible, marcada; null = vigente
+  cancelledAt: string | null;
+  cancellationReason: string | null;
   startsAt: string;
   endsAt: string;
   recommendations: string | null;
