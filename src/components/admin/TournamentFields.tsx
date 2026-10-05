@@ -28,7 +28,7 @@ const BANK_FIELDS: {
   { key: 'bankName', label: 'Banco', placeholder: 'Banco Estado' },
   { key: 'accountType', label: 'Tipo de cuenta', placeholder: 'Cuenta corriente' },
   { key: 'accountNumber', label: 'Número de cuenta', placeholder: '12345678' },
-  { key: 'holderName', label: 'Titular', placeholder: 'Asociación Galadhrym' },
+  { key: 'holderName', label: 'Titular', placeholder: 'Comunidad Galadhrym' },
   { key: 'holderRut', label: 'RUT del titular', placeholder: '65.123.456-7' },
   { key: 'holderEmail', label: 'Correo del titular', placeholder: 'tesoreria@…' },
 ];

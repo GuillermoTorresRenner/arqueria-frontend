@@ -9,7 +9,7 @@ export const SITE = {
   name: 'Galadhrym',
   title: 'Galadhrym — Arquería Tradicional',
   description:
-    'Asociación de arquería tradicional Galadhrym: escuela para principiantes, entrenamiento y torneos de tiro con arco.',
+    'Comunidad de arquería tradicional Galadhrym: taller para principiantes, entrenamiento y torneos de tiro con arco.',
   url: import.meta.env.VITE_SITE_URL ?? 'https://galadhrym.cl',
   image: '/og-image.jpg',
   locale: 'es_CL',

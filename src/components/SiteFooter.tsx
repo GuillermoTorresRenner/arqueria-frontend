@@ -16,8 +16,8 @@ export function SiteFooter() {
         <div className="space-y-4 sm:col-span-2 lg:col-span-1">
           <LogoFull className="h-20 text-foreground/90" />
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Asociación de arquería tradicional. Desde 2011 acercamos el tiro con arco a quienes
-            siempre quisieron probarlo, con una escuela abierta a todas las edades y niveles.
+            Comunidad de arquería tradicional. Desde 2011 acercamos el tiro con arco a quienes
+            siempre quisieron probarlo, con un taller abierto a todas las edades y niveles.
           </p>
         </div>
 
