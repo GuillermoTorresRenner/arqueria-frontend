@@ -149,6 +149,28 @@ export interface TournamentCategorySummary {
   scoringFormat?: Pick<ScoringFormat, 'name' | 'zones'> | null;
 }
 
+/// Configuración de una categoría (lo que edita el admin)
+export interface TournamentCategoryConfig {
+  name: string;
+  mode: CategoryMode;
+  scoringFormatId: string | null;
+  /// Puntaje: flechas por arquero en cada ronda
+  arrowsPerArcher: number;
+  /// Duelos: dianas abatidas para ganar
+  targetsToWin: number;
+  /// Flechas por arquero en cada tanda de desempate
+  shootOffArrows: number;
+  /// Flechas por arquero en la minironda entre perdedores empatados
+  playoffArrows: number;
+}
+
+export interface TournamentCategory extends TournamentCategoryConfig {
+  id: string;
+  order: number;
+  judgeId: string | null;
+  _count: { registrations: number; rounds: number };
+}
+
 export interface Tournament {
   id: string;
   slug: string;
@@ -256,19 +278,21 @@ export interface PublicActivity {
   _count: { attendances: number };
 }
 
+export interface MemberRegistration {
+  status: RegistrationStatus;
+  createdAt: string;
+  confirmedAt: string | null;
+  category: { id: string; name: string };
+  /// Número de participante: el mismo en todas sus categorías
+  participant: { number: number };
+}
+
 export interface MemberActivity extends PublicActivity {
   attending: boolean;
   /// En los torneos el socio ve los datos de transferencia
   tournament: (PublicTournament & { paymentInfo: PaymentInfo | null }) | null;
-  /// Su inscripción al torneo, si tiene
-  registration?: {
-    status: RegistrationStatus;
-    createdAt: string;
-    confirmedAt: string | null;
-    category: { id: string; name: string };
-    /// Número de participante: el mismo en todas sus categorías
-    participant: { number: number };
-  } | null;
+  /// Sus inscripciones al torneo, una por categoría
+  registrations?: MemberRegistration[];
 }
 
 export interface Activity extends Omit<PublicActivity, 'tournament'> {
@@ -308,7 +332,8 @@ export interface TournamentRegistration {
 export interface ActivityDetail extends Omit<Activity, 'tournament'> {
   attendances: ActivityAttendee[];
   tournament:
-    | (Omit<PublicTournament, 'fees'> & {
+    | (Omit<PublicTournament, 'fees' | 'categories'> & {
+        categories: TournamentCategory[];
         bankAccountId: string | null;
         paymentInfo: TournamentPayment | null;
         judges: {

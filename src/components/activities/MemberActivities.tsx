@@ -30,7 +30,7 @@ export function MemberActivities() {
     groups.set(key, [...(groups.get(key) ?? []), a]);
   }
   const confirmed =
-    data?.activities.filter((a) => !a.cancelledAt && (a.attending || a.registration)).length ?? 0;
+    data?.activities.filter((a) => !a.cancelledAt && (a.attending || Boolean(a.registrations?.length))).length ?? 0;
 
   return (
     <section id="actividades" ref={ref} className="scroll-mt-24" aria-labelledby="member-activities">
@@ -71,7 +71,7 @@ export function MemberActivities() {
                   <ActivityCard
                     key={activity.id}
                     activity={activity}
-                    highlight={activity.attending || Boolean(activity.registration)}
+                    highlight={activity.attending || Boolean(activity.registrations?.length)}
                     footer={
                       activity.type === 'TOURNAMENT' && activity.tournament ? (
                         <TournamentRegistrationBox activity={activity} canAttend={data.canAttend} />

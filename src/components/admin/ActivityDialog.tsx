@@ -36,7 +36,10 @@ import { CancelActivityDialog } from '@/components/admin/CancelActivityDialog';
 import { CancelledNotice } from '@/components/activities/CancelledNotice';
 import { TournamentFields } from '@/components/admin/TournamentFields';
 import {
+  categoryToForm,
+  DEFAULT_CATEGORIES,
   EMPTY_TOURNAMENT,
+  newCategory,
   paymentToForm,
   type TournamentFormState,
 } from '@/lib/tournament-form';
@@ -134,7 +137,10 @@ export function ActivityDialog({
         </div>
       ) : activity && tab === 'people' ? (
         isTournament ? (
-          <RegistrationsList registrations={detail?.tournament?.registrations ?? []} />
+          <RegistrationsList
+            registrations={detail?.tournament?.registrations ?? []}
+            categories={detail?.tournament?.categories ?? []}
+          />
         ) : (
           <AttendeesList activityId={activity.id} />
         )
@@ -147,7 +153,7 @@ export function ActivityDialog({
 
 /// Ficha del torneo guardada → estado del formulario
 function tournamentToForm(t: ActivityDetail['tournament']): TournamentFormState {
-  if (!t) return EMPTY_TOURNAMENT;
+  if (!t) return { ...EMPTY_TOURNAMENT, categories: DEFAULT_CATEGORIES.map(newCategory) };
   const end = t.registrationEnd ? toLocalInputs(t.registrationEnd) : null;
   return {
     judgeIds: t.judges.map((j) => j.user.id),
@@ -157,6 +163,7 @@ function tournamentToForm(t: ActivityDetail['tournament']): TournamentFormState 
     registrationEndTime: end?.time ?? '23:59',
     maxParticipants: t.maxParticipants ? String(t.maxParticipants) : '',
     bankAccountId: t.bankAccountId ?? '',
+    categories: t.categories.map(categoryToForm),
     payment: paymentToForm(t.paymentInfo),
   };
 }
@@ -207,9 +214,11 @@ function ActivityForm({
   useEffect(() => {
     if (prefilled || !defaults.data) return;
     setPrefilled(true);
+    const previous = defaults.data.categories;
     setTournament((t) => ({
       ...t,
       bankAccountId: defaults.data?.bankAccountId ?? '',
+      categories: previous.length ? previous.map(newCategory) : t.categories,
       payment: paymentToForm(defaults.data),
     }));
   }, [defaults.data, prefilled]);
@@ -231,6 +240,32 @@ function ActivityForm({
     const fees = rows.map((f) => ({ label: f.label.trim(), amount: Number(f.amount) }));
     const max = t.maxParticipants ? Number(t.maxParticipants) : null;
     if (max !== null && (!Number.isInteger(max) || max < 1)) return 'El cupo debe ser un número mayor que cero';
+    if (!t.categories.length) return 'El torneo necesita al menos una categoría';
+    const count = (v: string) => (/^\d+$/.test(v) && Number(v) >= 1 ? Number(v) : null);
+    const categories: TournamentInput['categories'] = [];
+    for (const c of t.categories) {
+      const name = c.name.trim();
+      if (name.length < 2) return 'Cada categoría necesita un nombre';
+      if (c.mode === 'SCORE' && !c.scoringFormatId) return `Elige la diana de «${name}»`;
+      const arrowsPerArcher = count(c.arrowsPerArcher);
+      const targetsToWin = count(c.targetsToWin);
+      const shootOffArrows = count(c.shootOffArrows);
+      const playoffArrows = count(c.playoffArrows);
+      if (!arrowsPerArcher || !targetsToWin || !shootOffArrows || !playoffArrows) {
+        return `Revisa los números de «${name}»: deben ser enteros mayores que cero`;
+      }
+      categories.push({
+        ...(c.id && { id: c.id }),
+        name,
+        mode: c.mode,
+        scoringFormatId: c.mode === 'SCORE' ? c.scoringFormatId : null,
+        arrowsPerArcher,
+        targetsToWin,
+        shootOffArrows,
+        playoffArrows,
+        judgeId: c.judgeId && t.judgeIds.includes(c.judgeId) ? c.judgeId : null,
+      });
+    }
     return {
       judgeIds: t.judgeIds,
       rules: t.rules || null,
@@ -240,6 +275,7 @@ function ActivityForm({
         : null,
       maxParticipants: max,
       bankAccountId: t.bankAccountId || null,
+      categories,
       paymentInfo: { instructions: t.payment.instructions, fees },
     };
   };

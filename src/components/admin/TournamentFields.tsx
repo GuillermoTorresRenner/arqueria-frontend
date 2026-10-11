@@ -13,6 +13,7 @@ import { apiErrorMessage } from '@/lib/api';
 import { assetUrl } from '@/lib/assets';
 import { bankAccountLabel, formatSize, youtubeId } from '@/lib/activities';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import { TournamentCategoriesEditor } from '@/components/admin/TournamentCategoriesEditor';
 import { YoutubeEmbed } from '@/components/activities/YoutubeEmbed';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,12 +74,19 @@ export function TournamentFields({
   const setFee = (i: number, patch: Partial<{ label: string; amount: string }>) =>
     setPayment({ fees: value.payment.fees.map((f, j) => (j === i ? { ...f, ...patch } : f)) });
 
+  // Quien deja de ser juez del torneo deja de serlo también de sus categorías
   const toggleJudge = (id: string) =>
-    onChange({
-      judgeIds: value.judgeIds.includes(id)
-        ? value.judgeIds.filter((j) => j !== id)
-        : [...value.judgeIds, id],
-    });
+    onChange(
+      value.judgeIds.includes(id)
+        ? {
+            judgeIds: value.judgeIds.filter((j) => j !== id),
+            categories: value.categories.map((c) =>
+              c.judgeId === id ? { ...c, judgeId: '' } : c,
+            ),
+          }
+        : { judgeIds: [...value.judgeIds, id] },
+    );
+  const tournamentJudges = (staff ?? []).filter((u) => value.judgeIds.includes(u.id));
 
   const addFiles = async (list: FileList | null) => {
     const files = Array.from(list ?? []);
@@ -158,6 +166,12 @@ export function TournamentFields({
           </div>
         )}
       </section>
+
+      <TournamentCategoriesEditor
+        value={value.categories}
+        onChange={(categories) => onChange({ categories })}
+        judges={tournamentJudges}
+      />
 
       {/* Reglamento */}
       <section className="space-y-2">

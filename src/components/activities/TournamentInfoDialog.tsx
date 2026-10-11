@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, Swords, Target } from 'lucide-react';
 import { assetUrl } from '@/lib/assets';
 import {
   formatCLP,
@@ -39,6 +39,31 @@ export function TournamentInfoDialog({
           <section className="space-y-2">
             <h3 className="font-semibold">Video instructivo</h3>
             <YoutubeEmbed id={videoId} title={`Video instructivo: ${activity.title}`} />
+          </section>
+        )}
+
+        {tournament.categories.length > 0 && (
+          <section className="space-y-2">
+            <h3 className="font-semibold">Categorías</h3>
+            <ul className="divide-y rounded-md border">
+              {tournament.categories.map((c) => (
+                <li key={c.id} className="flex items-center gap-2 px-3 py-2">
+                  {c.mode === 'KNOCKDOWN' ? (
+                    <Swords className="h-4 w-4 text-primary" aria-hidden="true" />
+                  ) : (
+                    <Target className="h-4 w-4 text-primary" aria-hidden="true" />
+                  )}
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-muted-foreground">
+                    · {c.mode === 'KNOCKDOWN' ? 'duelos con dianas abatibles' : 'puntaje en diana'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted-foreground">
+              Cada categoría se inscribe y se paga por separado. Eliminación directa: los
+              enfrentamientos se sortean al comenzar.
+            </p>
           </section>
         )}
 

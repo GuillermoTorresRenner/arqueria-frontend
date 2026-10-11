@@ -10,6 +10,8 @@ import type {
   Place,
   PublicActivity,
   RegistrationStatus,
+  ScoringFormat,
+  TournamentCategoryConfig,
   TournamentDocument,
   TournamentPayment,
 } from '@/types';
@@ -23,6 +25,7 @@ export interface TournamentInput {
   maxParticipants: number | null;
   bankAccountId: string | null;
   paymentInfo: TournamentPayment | null;
+  categories: (TournamentCategoryConfig & { id?: string; judgeId: string | null })[];
 }
 
 export interface ActivityInput {
@@ -213,6 +216,17 @@ export async function reverseGeocode(lat: number, lon: number) {
   ).data;
 }
 
+// ---------- Dianas ----------
+
+/// Dianas (zonas de puntaje), incluidas las desactivadas
+export function useScoringFormats() {
+  return useQuery({
+    queryKey: ['scoring-formats'],
+    queryFn: async () => (await api.get<ScoringFormat[]>('/tournaments/formats')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 // ---------- Cuentas bancarias ----------
 
 export function useBankAccounts() {
@@ -254,16 +268,18 @@ export function useDeleteBankAccount() {
 
 // ---------- Torneos ----------
 
-/// Cuenta, instrucciones y montos del último torneo, para precargar uno nuevo
+/// Lo que propone el último torneo para precargar uno nuevo
+export interface TournamentDefaults extends TournamentPayment {
+  bankAccountId: string | null;
+  categories: TournamentCategoryConfig[];
+}
+
+/// Cuenta, instrucciones, montos y categorías del último torneo
 export function usePaymentDefaults(enabled: boolean) {
   return useQuery({
     queryKey: ['activities', 'payment-defaults'],
     queryFn: async () =>
-      (
-        await api.get<(TournamentPayment & { bankAccountId: string | null }) | null>(
-          '/activities/payment-defaults',
-        )
-      ).data,
+      (await api.get<TournamentDefaults | null>('/activities/payment-defaults')).data,
     enabled,
     staleTime: Infinity,
   });
@@ -287,12 +303,20 @@ export function useDeleteDocument() {
 export function useTournamentRegistration() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, register }: { id: string; register: boolean }) =>
+    mutationFn: async ({
+      id,
+      categoryId,
+      register,
+    }: {
+      id: string;
+      categoryId: string;
+      register: boolean;
+    }) =>
       (
         await (register
-          ? api.post(`/activities/${id}/registration`)
-          : api.delete(`/activities/${id}/registration`))
-      ).data as { status: RegistrationStatus | null; emailSent?: boolean },
+          ? api.post(`/activities/${id}/registration`, { categoryId })
+          : api.delete(`/activities/${id}/registration`, { params: { categoryId } }))
+      ).data as { status: RegistrationStatus | null; number?: number; emailSent?: boolean },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),
   });
 }

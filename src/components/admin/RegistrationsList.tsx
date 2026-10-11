@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { BadgeCheck, Clock, Trash2, Undo2, Users } from 'lucide-react';
 import { useDeleteRegistration, useSetRegistrationStatus } from '@/hooks/use-activities';
@@ -6,7 +7,7 @@ import { apiErrorMessage } from '@/lib/api';
 import { CLUB_EMAIL } from '@/lib/links';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import type { TournamentRegistration } from '@/types';
+import type { TournamentCategory, TournamentRegistration } from '@/types';
 
 const dateFormat = new Intl.DateTimeFormat('es-CL', {
   day: 'numeric',
@@ -20,13 +21,24 @@ const fullName = (r: TournamentRegistration) =>
   [r.member.user.name, r.member.user.surname].filter(Boolean).join(' ') || r.member.user.email;
 
 /**
- * Inscripciones de un torneo. Quien se preinscribe queda pendiente; al llegar
- * el comprobante a {CLUB_EMAIL}, un admin confirma el pago y queda inscrito.
+ * Inscripciones de un torneo, una por categoría. Quien se preinscribe queda
+ * pendiente; al llegar el comprobante a {CLUB_EMAIL}, un admin confirma el
+ * pago de esa categoría y queda inscrito.
  */
-export function RegistrationsList({ registrations }: { registrations: TournamentRegistration[] }) {
+export function RegistrationsList({
+  registrations: all,
+  categories,
+}: {
+  registrations: TournamentRegistration[];
+  categories: Pick<TournamentCategory, 'id' | 'name'>[];
+}) {
   const setStatus = useSetRegistrationStatus();
   const deleteRegistration = useDeleteRegistration();
   const confirm = useConfirm();
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const registrations = all
+    .filter((r) => !categoryId || r.category.id === categoryId)
+    .sort((a, b) => a.participant.number - b.participant.number);
   const pending = registrations.filter((r) => r.status === 'PENDING').length;
   const confirmed = registrations.length - pending;
 
@@ -80,7 +92,7 @@ export function RegistrationsList({ registrations }: { registrations: Tournament
     });
   };
 
-  if (!registrations.length) {
+  if (!all.length) {
     return (
       <p className="flex flex-col items-center gap-2 rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
         <Users className="h-6 w-6" aria-hidden="true" />
@@ -91,6 +103,24 @@ export function RegistrationsList({ registrations }: { registrations: Tournament
 
   return (
     <div className="space-y-3">
+      {categories.length > 1 && (
+        <div role="group" aria-label="Filtrar por categoría" className="flex flex-wrap gap-1">
+          {[{ id: null, name: 'Todas' }, ...categories].map((c) => {
+            const count = c.id ? all.filter((r) => r.category.id === c.id).length : all.length;
+            return (
+              <Button
+                key={c.id ?? 'all'}
+                size="sm"
+                variant={categoryId === c.id ? 'default' : 'outline'}
+                aria-pressed={categoryId === c.id}
+                onClick={() => setCategoryId(c.id)}
+              >
+                {c.name} ({count})
+              </Button>
+            );
+          })}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 text-sm">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
           <BadgeCheck className="h-4 w-4" aria-hidden="true" />
