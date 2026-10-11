@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Landmark,
   MapPin,
   Plus,
   Users,
@@ -22,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ActivityDialog } from '@/components/admin/ActivityDialog';
 import { PlacesDialog } from '@/components/admin/PlacesDialog';
+import { BankAccountsDialog } from '@/components/admin/BankAccountsDialog';
 import { ActivityWeatherPanel } from '@/components/activities/WeatherInfo';
 import { Button } from '@/components/ui/button';
 import { TypeBadge } from '@/components/activities/TypeBadge';
@@ -51,6 +53,7 @@ function monthGrid(month: Date) {
 type DialogState =
   | { kind: 'activity'; activity: Activity | null; date?: string }
   | { kind: 'places' }
+  | { kind: 'accounts' }
   | null;
 
 export function ActivitiesAdminPage() {
@@ -102,6 +105,10 @@ export function ActivitiesAdminPage() {
           <Button variant="outline" onClick={() => setDialog({ kind: 'places' })}>
             <MapPin className="h-4 w-4" aria-hidden="true" />
             Lugares
+          </Button>
+          <Button variant="outline" onClick={() => setDialog({ kind: 'accounts' })}>
+            <Landmark className="h-4 w-4" aria-hidden="true" />
+            Cuentas
           </Button>
           <Button onClick={() => openNew(selected < today ? today : selected)}>
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -350,6 +357,7 @@ export function ActivitiesAdminPage() {
         />
       )}
       {dialog?.kind === 'places' && <PlacesDialog onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'accounts' && <BankAccountsDialog onClose={() => setDialog(null)} />}
     </div>
   );
 }

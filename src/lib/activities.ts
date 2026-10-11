@@ -1,5 +1,5 @@
 import { CalendarDays, PartyPopper, Trophy, type LucideIcon } from 'lucide-react';
-import type { ActivityType, Fee, Place } from '@/types';
+import type { ActivityType, BankAccount, Fee, Place } from '@/types';
 
 /// Open-Meteo pronostica 16 días: más allá no se pide el tiempo
 export const FORECAST_DAYS = 16;
@@ -152,4 +152,9 @@ export const formatDateTime = (iso: string | Date) => capitalize(dateTimeFormat.
 export function formatSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / 1024 / 1024).toLocaleString('es-CL', { maximumFractionDigits: 1 })} MB`;
+}
+
+/// «Banco de Chile · Cuenta Vista 00-061-12262-78»
+export function bankAccountLabel(a: Pick<BankAccount, 'bankName' | 'accountType' | 'accountNumber'>) {
+  return `${a.bankName} · ${a.accountType} ${a.accountNumber}`;
 }

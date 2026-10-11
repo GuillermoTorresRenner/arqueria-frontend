@@ -194,6 +194,26 @@ export interface Fee {
   amount: number;
 }
 
+/// Cuenta guardada para pagar inscripciones; se elige en cada torneo
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  accountType: string;
+  accountNumber: string;
+  holderName: string;
+  holderRut: string;
+  holderEmail: string | null;
+  isActive: boolean;
+  _count?: { tournaments: number };
+}
+
+/// Lo propio del pago de cada torneo (la cuenta va aparte)
+export interface TournamentPayment {
+  instructions?: string;
+  fees?: Fee[];
+}
+
+/// Datos completos para transferir: cuenta asignada + instrucciones y montos
 export interface PaymentInfo {
   bankName?: string;
   accountType?: string;
@@ -290,7 +310,8 @@ export interface ActivityDetail extends Omit<Activity, 'tournament'> {
   attendances: ActivityAttendee[];
   tournament:
     | (Omit<PublicTournament, 'fees'> & {
-        paymentInfo: PaymentInfo | null;
+        bankAccountId: string | null;
+        paymentInfo: TournamentPayment | null;
         judges: {
           user: { id: string; name: string | null; surname: string | null; email: string; userRoles: Role };
         }[];

@@ -1,37 +1,31 @@
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { FileText, Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
+import { FileText, Landmark, Loader2, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
 import { useStaffUsers } from '@/hooks/use-users';
-import { uploadTournamentDocument, useDeleteDocument } from '@/hooks/use-activities';
+import {
+  uploadTournamentDocument,
+  useBankAccounts,
+  useDeleteDocument,
+} from '@/hooks/use-activities';
 import { useConfirm } from '@/features/confirm-store';
 import { apiErrorMessage } from '@/lib/api';
 import { assetUrl } from '@/lib/assets';
-import { formatSize, youtubeId } from '@/lib/activities';
+import { bankAccountLabel, formatSize, youtubeId } from '@/lib/activities';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { YoutubeEmbed } from '@/components/activities/YoutubeEmbed';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { PaymentInfo, TournamentDocument } from '@/types';
+import type { TournamentDocument } from '@/types';
 import {
   DOCUMENT_ACCEPT,
   MAX_DOCUMENT_SIZE,
   type TournamentFormState,
 } from '@/lib/tournament-form';
 
-const BANK_FIELDS: {
-  key: Exclude<keyof PaymentInfo, 'fees' | 'instructions'>;
-  label: string;
-  placeholder: string;
-}[] = [
-  { key: 'bankName', label: 'Banco', placeholder: 'Banco Estado' },
-  { key: 'accountType', label: 'Tipo de cuenta', placeholder: 'Cuenta corriente' },
-  { key: 'accountNumber', label: 'Número de cuenta', placeholder: '12345678' },
-  { key: 'holderName', label: 'Titular', placeholder: 'Comunidad Galadhrym' },
-  { key: 'holderRut', label: 'RUT del titular', placeholder: '65.123.456-7' },
-  { key: 'holderEmail', label: 'Correo del titular', placeholder: 'tesoreria@…' },
-];
+const SELECT =
+  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 /**
  * Campos propios de un torneo: jueces, reglamento (redactado o en archivo),
@@ -40,6 +34,8 @@ const BANK_FIELDS: {
 export function TournamentFields({
   value,
   onChange,
+  savedBankAccountId,
+  onManageAccounts,
   activityId,
   documents,
   pendingFiles,
@@ -47,6 +43,10 @@ export function TournamentFields({
 }: {
   value: TournamentFormState;
   onChange: (patch: Partial<TournamentFormState>) => void;
+  /// Cuenta guardada del torneo, que se mantiene aunque esté desactivada
+  savedBankAccountId?: string | null;
+  /// Abre la gestión de cuentas (fuera del formulario, que tiene el suyo)
+  onManageAccounts: () => void;
   /// null mientras el torneo no se ha guardado: los archivos esperan en cola
   activityId: string | null;
   documents: TournamentDocument[];
@@ -59,6 +59,12 @@ export function TournamentFields({
   const confirm = useConfirm();
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { data: accounts } = useBankAccounts();
+  // Cuentas activas y, al editar, la actual aunque esté desactivada
+  const accountOptions = (accounts ?? []).filter(
+    (a) => a.isActive || a.id === savedBankAccountId,
+  );
+  const account = accounts?.find((a) => a.id === value.bankAccountId);
   const videoId = youtubeId(value.youtubeUrl);
   const activeStaff = (staff ?? []).filter((u) => u.isActive);
 
@@ -354,21 +360,64 @@ export function TournamentFields({
           </Button>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {BANK_FIELDS.map((f) => (
-            <div key={f.key} className="space-y-1">
-              <Label htmlFor={`bank-${f.key}`} className="text-xs">
-                {f.label}
-              </Label>
-              <Input
-                id={`bank-${f.key}`}
-                type={f.key === 'holderEmail' ? 'email' : 'text'}
-                value={value.payment[f.key] ?? ''}
-                placeholder={f.placeholder}
-                onChange={(e) => setPayment({ [f.key]: e.target.value })}
-              />
-            </div>
-          ))}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="payment-account" className="text-xs">
+              Cuenta para transferir
+            </Label>
+            <button
+              type="button"
+              onClick={onManageAccounts}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Gestionar cuentas
+            </button>
+          </div>
+          <select
+            id="payment-account"
+            value={value.bankAccountId}
+            onChange={(e) => onChange({ bankAccountId: e.target.value })}
+            className={SELECT}
+          >
+            <option value="">Sin cuenta asignada</option>
+            {accountOptions.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.holderName} · {bankAccountLabel(a)}
+                {a.isActive ? '' : ' (inactiva)'}
+              </option>
+            ))}
+          </select>
+          {account ? (
+            <dl className="grid gap-x-4 gap-y-1 rounded-md border bg-muted/40 p-3 text-xs sm:grid-cols-2">
+              {(
+                [
+                  ['Banco', account.bankName],
+                  ['Tipo de cuenta', account.accountType],
+                  ['Número', account.accountNumber],
+                  ['Titular', account.holderName],
+                  ['RUT', account.holderRut],
+                  ['Correo', account.holderEmail],
+                ] as const
+              )
+                .filter(([, v]) => v)
+                .map(([label, v]) => (
+                  <div key={label} className="flex gap-2">
+                    <dt className="text-muted-foreground">{label}:</dt>
+                    <dd className="font-medium">{v}</dd>
+                  </div>
+                ))}
+            </dl>
+          ) : (
+            accounts && (
+              <p className="text-xs text-muted-foreground">
+                <Landmark className="mr-1 inline h-3 w-3" aria-hidden="true" />
+                {accounts.length === 0
+                  ? 'Aún no hay cuentas guardadas: crea una en «Gestionar cuentas».'
+                  : 'Sin cuenta, el correo de preinscripción no llevará datos de transferencia.'}
+              </p>
+            )
+          )}
         </div>
         <div className="space-y-1">
           <Label htmlFor="payment-instructions" className="text-xs">

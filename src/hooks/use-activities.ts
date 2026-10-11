@@ -5,12 +5,13 @@ import type {
   ActivityDetail,
   ActivityType,
   ActivityWeather,
+  BankAccount,
   MemberActivity,
-  PaymentInfo,
   Place,
   PublicActivity,
   RegistrationStatus,
   TournamentDocument,
+  TournamentPayment,
 } from '@/types';
 
 /// Datos propios de un torneo al guardarlo
@@ -20,7 +21,8 @@ export interface TournamentInput {
   youtubeUrl: string | null;
   registrationEnd: string | null;
   maxParticipants: number | null;
-  paymentInfo: PaymentInfo | null;
+  bankAccountId: string | null;
+  paymentInfo: TournamentPayment | null;
 }
 
 export interface ActivityInput {
@@ -33,6 +35,10 @@ export interface ActivityInput {
   notifyMembers?: boolean;
   tournament?: TournamentInput;
 }
+
+export type BankAccountInput = Omit<BankAccount, 'id' | 'isActive' | '_count'> & {
+  isActive?: boolean;
+};
 
 export type PlaceInput = Pick<Place, 'name' | 'address' | 'latitude' | 'longitude'> & {
   isActive?: boolean;
@@ -207,14 +213,57 @@ export async function reverseGeocode(lat: number, lon: number) {
   ).data;
 }
 
+// ---------- Cuentas bancarias ----------
+
+export function useBankAccounts() {
+  return useQuery({
+    queryKey: ['bank-accounts'],
+    queryFn: async () => (await api.get<BankAccount[]>('/bank-accounts')).data,
+  });
+}
+
+function useBankAccountsMutation<T, R = BankAccount>(fn: (input: T) => Promise<R>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['activities'] });
+    },
+  });
+}
+
+export function useCreateBankAccount() {
+  return useBankAccountsMutation(
+    async (input: BankAccountInput) => (await api.post<BankAccount>('/bank-accounts', input)).data,
+  );
+}
+
+export function useUpdateBankAccount() {
+  return useBankAccountsMutation(
+    async ({ id, ...input }: Partial<BankAccountInput> & { id: string }) =>
+      (await api.patch<BankAccount>(`/bank-accounts/${id}`, input)).data,
+  );
+}
+
+export function useDeleteBankAccount() {
+  return useBankAccountsMutation(
+    async (id: string) => (await api.delete(`/bank-accounts/${id}`)).data,
+  );
+}
+
 // ---------- Torneos ----------
 
-/// Datos de pago del último torneo, para precargar uno nuevo
+/// Cuenta, instrucciones y montos del último torneo, para precargar uno nuevo
 export function usePaymentDefaults(enabled: boolean) {
   return useQuery({
     queryKey: ['activities', 'payment-defaults'],
     queryFn: async () =>
-      (await api.get<PaymentInfo | null>('/activities/payment-defaults')).data,
+      (
+        await api.get<(TournamentPayment & { bankAccountId: string | null }) | null>(
+          '/activities/payment-defaults',
+        )
+      ).data,
     enabled,
     staleTime: Infinity,
   });

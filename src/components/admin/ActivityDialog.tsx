@@ -30,6 +30,7 @@ import { Modal } from '@/components/Modal';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { WeatherPanel } from '@/components/activities/WeatherInfo';
 import { PlacesDialog } from '@/components/admin/PlacesDialog';
+import { BankAccountsDialog } from '@/components/admin/BankAccountsDialog';
 import { RegistrationsList } from '@/components/admin/RegistrationsList';
 import { CancelActivityDialog } from '@/components/admin/CancelActivityDialog';
 import { CancelledNotice } from '@/components/activities/CancelledNotice';
@@ -155,6 +156,7 @@ function tournamentToForm(t: ActivityDetail['tournament']): TournamentFormState 
     registrationEndDate: end?.date ?? '',
     registrationEndTime: end?.time ?? '23:59',
     maxParticipants: t.maxParticipants ? String(t.maxParticipants) : '',
+    bankAccountId: t.bankAccountId ?? '',
     payment: paymentToForm(t.paymentInfo),
   };
 }
@@ -184,6 +186,7 @@ function ActivityForm({
   const [notifyMembers, setNotifyMembers] = useState(activity?.notifyMembers ?? false);
   const [error, setError] = useState<string | null>(null);
   const [placesOpen, setPlacesOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const restoreActivity = useRestoreActivity();
   const cancelled = Boolean(activity?.cancelledAt);
@@ -198,13 +201,17 @@ function ActivityForm({
   const saving = createActivity.isPending || updateActivity.isPending || uploading;
   const isTournament = type === 'TOURNAMENT';
 
-  // Un torneo nuevo arranca con los datos de pago del anterior
+  // Un torneo nuevo arranca con la cuenta, instrucciones y montos del anterior
   const defaults = usePaymentDefaults(isTournament && !activity?.tournament);
   const [prefilled, setPrefilled] = useState(false);
   useEffect(() => {
     if (prefilled || !defaults.data) return;
     setPrefilled(true);
-    setTournament((t) => ({ ...t, payment: paymentToForm(defaults.data) }));
+    setTournament((t) => ({
+      ...t,
+      bankAccountId: defaults.data?.bankAccountId ?? '',
+      payment: paymentToForm(defaults.data),
+    }));
   }, [defaults.data, prefilled]);
 
   const patchTournament = (patch: Partial<TournamentFormState>) =>
@@ -232,7 +239,8 @@ function ActivityForm({
         ? fromLocalInputs(t.registrationEndDate, t.registrationEndTime || '23:59')
         : null,
       maxParticipants: max,
-      paymentInfo: { ...t.payment, fees },
+      bankAccountId: t.bankAccountId || null,
+      paymentInfo: { instructions: t.payment.instructions, fees },
     };
   };
 
@@ -553,6 +561,8 @@ function ActivityForm({
           <TournamentFields
             value={tournament}
             onChange={patchTournament}
+            savedBankAccountId={activity?.tournament?.bankAccountId}
+            onManageAccounts={() => setAccountsOpen(true)}
             activityId={activity?.tournament ? activity.id : null}
             documents={activity?.tournament?.documents ?? []}
             pendingFiles={pendingFiles}
@@ -659,6 +669,13 @@ function ActivityForm({
         <PlacesDialog
           onClose={() => setPlacesOpen(false)}
           onCreated={(place) => setPlaceId(place.id)}
+        />
+      )}
+
+      {accountsOpen && (
+        <BankAccountsDialog
+          onClose={() => setAccountsOpen(false)}
+          onCreated={(account) => patchTournament({ bankAccountId: account.id })}
         />
       )}
     </>
