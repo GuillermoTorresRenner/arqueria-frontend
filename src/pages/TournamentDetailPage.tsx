@@ -1,6 +1,12 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { CalendarDays, MapPin, Radio, Swords, Target } from 'lucide-react';
 import { useTournamentBySlug } from '@/hooks/use-tournaments';
+import { useBracketLive, usePublicBracket } from '@/hooks/use-brackets';
+import { useMemberActivities } from '@/hooks/use-activities';
+import { useAuthStore } from '@/features/auth-store';
+import { cn } from '@/lib/utils';
+import { BracketView } from '@/components/bracket/BracketView';
 import { Badge } from '@/components/ui/badge';
 import { Seo } from '@/components/Seo';
 import { absoluteUrl, SITE } from '@/lib/seo';
@@ -13,12 +19,23 @@ const dateFormatter = new Intl.DateTimeFormat('es-CL', {
 
 const MODE_LABEL = {
   SCORE: 'Puntaje',
-  KNOCKDOWN: 'Duelos con dianas abatibles',
+  KNOCKDOWN: 'Duelos',
 } as const;
 
 export function TournamentDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: tournament, isLoading, isError } = useTournamentBySlug(slug);
+  const { data: bracket } = usePublicBracket(slug);
+  const [selected, setSelected] = useState<string | null>(null);
+  // El fixture se actualiza solo mientras los jueces cargan resultados
+  useBracketLive(tournament?.id);
+  // El socio ve resaltados sus enfrentamientos
+  const isMember = useAuthStore((s) => s.user?.role === 'MEMBER');
+  const { data: mine } = useMemberActivities(isMember);
+  const myNumbers =
+    mine?.activities
+      .find((a) => a.tournament?.slug === slug)
+      ?.registrations?.map((r) => r.participant.number) ?? [];
 
   if (isLoading) {
     return (
@@ -110,34 +127,65 @@ export function TournamentDetailPage() {
         </div>
       </header>
 
-      <section className="mt-10">
-        <h2 className="text-xl font-semibold">Categorías</h2>
+      <section className="mt-10 space-y-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-xl font-semibold">Fixture</h2>
+          {myNumbers.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Tu número de participante: <strong>{myNumbers[0]}</strong> (resaltado)
+            </p>
+          )}
+        </div>
         {!tournament.categories?.length ? (
-          <p className="state-empty mt-6">Las categorías se anunciarán pronto.</p>
+          <p className="state-empty">Las categorías se anunciarán pronto.</p>
         ) : (
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-            {tournament.categories.map((category) => (
-              <li key={category.id} className="rounded-lg border p-4">
-                <p className="flex items-center gap-2 font-semibold">
-                  {category.mode === 'KNOCKDOWN' ? (
-                    <Swords className="h-4 w-4 text-primary" aria-hidden="true" />
-                  ) : (
-                    <Target className="h-4 w-4 text-primary" aria-hidden="true" />
-                  )}
-                  {category.name}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {MODE_LABEL[category.mode]}
-                  {category.scoringFormat ? ` · ${category.scoringFormat.name}` : ''}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <>
+            <div role="tablist" className="flex flex-wrap gap-2">
+              {tournament.categories.map((c) => {
+                const active = (selected ?? tournament.categories![0].id) === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setSelected(c.id)}
+                    className={cn(
+                      'flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                      active ? 'border-primary bg-primary/10 text-foreground' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {c.mode === 'KNOCKDOWN' ? (
+                      <Swords className="h-4 w-4 text-primary" aria-hidden="true" />
+                    ) : (
+                      <Target className="h-4 w-4 text-primary" aria-hidden="true" />
+                    )}
+                    {c.name}
+                    {/* La modalidad solo si el nombre no la dice ya («Duelos») */}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {[c.name !== MODE_LABEL[c.mode] && MODE_LABEL[c.mode], c.scoringFormat?.name]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {(() => {
+              const id = selected ?? tournament.categories![0].id;
+              const category = bracket?.categories.find((c) => c.id === id);
+              return category ? (
+                <BracketView category={category} highlight={myNumbers} />
+              ) : (
+                <div className="h-48 skeleton" />
+              );
+            })()}
+            <p className="text-sm text-muted-foreground">
+              Eliminación directa: los enfrentamientos de la primera ronda se sortean y los
+              ganadores avanzan. El fixture se actualiza en vivo.
+            </p>
+          </>
         )}
-        <p className="mt-6 text-sm text-muted-foreground">
-          Los enfrentamientos se sortean al comenzar el torneo. Desde ese momento, el fixture de
-          cada categoría se publica aquí y se actualiza en vivo.
-        </p>
       </section>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, ChevronRight, Radio, Users } from 'lucide-react';
+import { CalendarDays, ChevronRight, GitFork, Radio, Users } from 'lucide-react';
 import { useAdminTournaments } from '@/hooks/use-tournaments';
 import { useActivityDetail } from '@/hooks/use-activities';
 import { useAuthStore } from '@/features/auth-store';
@@ -84,6 +84,12 @@ export function TournamentsAdminPage() {
                       : ''}
                   </p>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+                    <Button asChild size="sm">
+                      <Link to={`/admin/torneos/${tournament.id}/cuadro`}>
+                        <GitFork className="h-4 w-4 rotate-90" aria-hidden="true" />
+                        Cuadro y puntajes
+                      </Link>
+                    </Button>
                     {isAdmin && tournament.activity && (
                       <Button size="sm" variant="outline" onClick={() => setOpen(tournament)}>
                         <Users className="h-4 w-4" aria-hidden="true" />

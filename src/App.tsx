@@ -39,6 +39,17 @@ const TournamentsAdminPage = lazy(() =>
   })),
 );
 
+const TournamentBracketPage = lazy(() =>
+  import('@/pages/admin/TournamentBracketPage').then((m) => ({
+    default: m.TournamentBracketPage,
+  })),
+);
+const MatchScoringPage = lazy(() =>
+  import('@/pages/admin/MatchScoringPage').then((m) => ({
+    default: m.MatchScoringPage,
+  })),
+);
+
 const ActivitiesAdminPage = lazy(() =>
   import('@/pages/admin/ActivitiesAdminPage').then((m) => ({
     default: m.ActivitiesAdminPage,
@@ -106,6 +117,8 @@ export default function App() {
               <Route path="actividades" element={<ActivitiesAdminPage />} />
               <Route path="socios" element={<MembersAdminPage />} />
               <Route path="torneos" element={<TournamentsAdminPage />} />
+              <Route path="torneos/:id/cuadro" element={<TournamentBracketPage />} />
+              <Route path="enfrentamientos/:matchId" element={<MatchScoringPage />} />
               <Route path="usuarios" element={<UsersAdminPage />} />
             </Route>
           </Routes>

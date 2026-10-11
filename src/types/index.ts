@@ -379,3 +379,134 @@ export interface ActivitiesData {
   title?: string;
   text?: string;
 }
+
+// ---------- Cuadro de eliminación ----------
+
+export type MatchKind = 'REGULAR' | 'REPECHAGE' | 'PLAYOFF' | 'THIRD_PLACE' | 'FINAL';
+export type MatchStatus = 'PENDING' | 'IN_PROGRESS' | 'FINISHED';
+export type ShotPhase = 'REGULAR' | 'SHOOT_OFF';
+
+export interface BracketParticipant {
+  participantId: string;
+  number: number;
+  name: string;
+}
+
+export interface MatchEntryView extends BracketParticipant {
+  id: string;
+  slot: number;
+  /// Puntaje: suma de la fase regular · Duelos: puntos ganados
+  total: number;
+  /// Dianas abatidas (Duelos)
+  hits: number;
+  shootOffTotal: number;
+}
+
+export interface MatchShotView {
+  id: string;
+  entryId: string;
+  phase: ShotPhase;
+  sequence: number;
+  zoneLabel: string | null;
+  value: number;
+  hit: boolean | null;
+  /// Solo en el panel: quién lo cargó
+  recordedBy?: { name: string | null; surname: string | null } | null;
+  updatedAt?: string;
+}
+
+export interface MatchView {
+  id: string;
+  kind: MatchKind;
+  order: number;
+  status: MatchStatus;
+  /// Desempate en curso: la tanda que falta y quiénes la tiran
+  shootOff: { tanda: number; entryIds: string[] } | null;
+  winnerEntryId: string | null;
+  updatedAt: string;
+  entries: MatchEntryView[];
+  shots: MatchShotView[];
+}
+
+export interface BracketDraw {
+  id: string;
+  method: 'ALGORITHM' | 'MANUAL';
+  seed: string | null;
+  result: { pairs: [number, number][]; bye: number | null };
+  drawnBy: { name: string | null; surname: string | null } | null;
+  createdAt: string;
+}
+
+export interface BracketRoundView {
+  id: string;
+  number: number;
+  /// «Final», «Semifinal», «Cuartos de final»…
+  label: string;
+  entrantsCount: number;
+  /// En orden de cuadro; en una ronda impar en espera, entre quiénes se sortea
+  entrants: BracketParticipant[];
+  byeId: string | null;
+  /// Quien quedó sin rival y espera al mejor perdedor
+  bye: BracketParticipant | null;
+  arrowsPerArcher: number;
+  targetsToWin: number;
+  /// Ronda impar a la espera de sortear quién queda sin rival
+  awaitingDraw: boolean;
+  complete: boolean;
+  closedAt: string | null;
+  closedBy?: { name: string | null; surname: string | null } | null;
+  draws?: BracketDraw[];
+  matches: MatchView[];
+}
+
+export interface CategoryBracket {
+  id: string;
+  name: string;
+  mode: CategoryMode;
+  scoringFormat: Pick<ScoringFormat, 'name' | 'zones'> | null;
+  arrowsPerArcher: number;
+  targetsToWin: number;
+  shootOffArrows: number;
+  playoffArrows: number;
+  judge: { id: string; name: string | null; surname: string | null } | null;
+  status: 'NOT_DRAWN' | 'IN_PROGRESS' | 'FINISHED';
+  podium: {
+    first: BracketParticipant | null;
+    second: BracketParticipant | null;
+    third: BracketParticipant | null;
+  } | null;
+  rounds: BracketRoundView[];
+}
+
+export interface StaffCategoryBracket extends CategoryBracket {
+  canScore: boolean;
+  canAudit: boolean;
+  canManage: boolean;
+  /// Inscritos con el pago confirmado: son los que entran al sorteo
+  confirmed: BracketParticipant[];
+  pendingCount: number;
+}
+
+export interface BracketTournament {
+  id: string;
+  name: string;
+  slug: string;
+  status: TournamentStatus;
+  isPublic: boolean;
+}
+
+export interface MatchRules {
+  mode: CategoryMode;
+  kind: MatchKind;
+  arrows: number;
+  targetsToWin: number;
+  shootOffArrows: number;
+}
+
+export interface MatchDetail extends MatchView {
+  tournament: { id: string; name: string; slug: string };
+  category: { id: string; name: string; mode: CategoryMode; zones: ScoringZone[] };
+  round: { id: string; number: number; label: string; closedAt: string | null };
+  rules: MatchRules;
+  canScore: boolean;
+}
