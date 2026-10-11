@@ -25,6 +25,7 @@ export function TournamentRegistrationBox({
   const user = useAuthStore((s) => s.user);
   const tournament = activity.tournament!;
   const status = activity.registration?.status;
+  const number = activity.registration?.participant.number;
   const payment = tournament.paymentInfo;
 
   const closed =
@@ -32,7 +33,7 @@ export function TournamentRegistrationBox({
     (tournament.registrationEnd && new Date(tournament.registrationEnd) < new Date());
   const full =
     tournament.maxParticipants != null &&
-    tournament._count.registrations >= tournament.maxParticipants;
+    tournament._count.participants >= tournament.maxParticipants;
 
   const register = async () => {
     const ok = await confirm({
@@ -78,7 +79,7 @@ export function TournamentRegistrationBox({
     return (
       <p className="flex items-center gap-2 rounded-md bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
         <BadgeCheck className="h-4 w-4" aria-hidden="true" />
-        Inscrito: pago verificado
+        Inscrito con el n.º {number}: pago verificado
       </p>
     );
   }
@@ -99,7 +100,7 @@ export function TournamentRegistrationBox({
       <div className="space-y-3 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
         <p className="flex items-center gap-2 font-semibold text-amber-900 dark:text-amber-200">
           <Clock className="h-4 w-4" aria-hidden="true" />
-          Preinscrito: falta el comprobante de pago
+          Preinscrito con el n.º {number}: falta el comprobante de pago
         </p>
         <details>
           <summary className="cursor-pointer select-none font-medium">Datos para transferir</summary>

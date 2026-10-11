@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Leaderboard, Tournament } from '@/types';
+import type { Tournament } from '@/types';
 
 export function usePublicTournaments() {
   return useQuery({
@@ -15,15 +15,6 @@ export function useTournamentBySlug(slug: string | undefined) {
     queryFn: async () =>
       (await api.get<Tournament>(`/tournaments/public/${slug}`)).data,
     enabled: Boolean(slug),
-  });
-}
-
-export function useLeaderboard(tournamentId: string | undefined) {
-  return useQuery({
-    queryKey: ['leaderboard', tournamentId],
-    queryFn: async () =>
-      (await api.get<Leaderboard>(`/scoring/leaderboard/${tournamentId}`)).data,
-    enabled: Boolean(tournamentId),
   });
 }
 

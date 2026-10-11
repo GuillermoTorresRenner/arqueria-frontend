@@ -30,7 +30,7 @@ export function TournamentsAdminPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Torneos</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Campeonatos, inscripciones, sorteo de grupos y puntuaciones.
+          Campeonatos por categoría: inscritos numerados, sorteo y fixture.
         </p>
       </header>
 
@@ -69,15 +69,17 @@ export function TournamentsAdminPage() {
                   </p>
                   <p className="flex items-center gap-2">
                     <Users className="h-4 w-4" aria-hidden="true" />
-                    {tournament._count?.registrations ?? 0} inscritos ·{' '}
-                    {tournament._count?.groups ?? 0} grupos
+                    {tournament._count?.participants ?? 0} arqueros
+                    {tournament.categories?.length
+                      ? ` · ${tournament.categories.map((c) => c.name).join(', ')}`
+                      : ''}
                   </p>
                   {tournament.isPublic && (
                     <Link
                       to={`/torneos/${tournament.slug}`}
                       className="inline-block pt-1 text-primary underline-offset-4 hover:underline"
                     >
-                      Ver marcador público
+                      Ver página pública
                     </Link>
                   )}
                 </CardContent>

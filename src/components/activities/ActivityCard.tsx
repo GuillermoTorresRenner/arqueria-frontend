@@ -129,7 +129,7 @@ export function ActivityCard({
                     `Inscripciones hasta ${formatDateTime(tournament.registrationEnd).toLowerCase()}`}
                   {tournament.registrationEnd && tournament.maxParticipants && ' · '}
                   {tournament.maxParticipants &&
-                    `${tournament._count.registrations}/${tournament.maxParticipants} cupos`}
+                    `${tournament._count.participants}/${tournament.maxParticipants} cupos`}
                 </span>
               </li>
             )}

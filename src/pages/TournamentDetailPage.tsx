@@ -1,9 +1,7 @@
 import { useParams } from 'react-router-dom';
-import { CalendarDays, MapPin, Radio, Target } from 'lucide-react';
-import { useLeaderboard, useTournamentBySlug } from '@/hooks/use-tournaments';
-import { useLiveScoring } from '@/hooks/use-live-scoring';
+import { CalendarDays, MapPin, Radio, Swords, Target } from 'lucide-react';
+import { useTournamentBySlug } from '@/hooks/use-tournaments';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { Seo } from '@/components/Seo';
 import { absoluteUrl, SITE } from '@/lib/seo';
 
@@ -12,18 +10,15 @@ const dateFormatter = new Intl.DateTimeFormat('es-CL', {
   month: 'long',
   year: 'numeric',
 });
-const timeFormatter = new Intl.DateTimeFormat('es-CL', {
-  hour: '2-digit',
-  minute: '2-digit',
-});
+
+const MODE_LABEL = {
+  SCORE: 'Puntaje',
+  KNOCKDOWN: 'Duelos con dianas abatibles',
+} as const;
 
 export function TournamentDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: tournament, isLoading, isError } = useTournamentBySlug(slug);
-  const { data: leaderboard } = useLeaderboard(tournament?.id);
-
-  // Se suscribe al canal del torneo: el backend empuja el ranking recalculado.
-  useLiveScoring(tournament?.id);
 
   if (isLoading) {
     return (
@@ -76,7 +71,7 @@ export function TournamentDetailPage() {
         title={tournament.name}
         description={
           tournament.description ??
-          `Resultados y clasificación de ${tournament.name}${
+          `Categorías y enfrentamientos de ${tournament.name}${
             tournament.location ? ` en ${tournament.location}` : ''
           }.`
         }
@@ -112,80 +107,37 @@ export function TournamentDetailPage() {
               {tournament.location}
             </span>
           )}
-          {tournament.scoringFormat && (
-            <span className="flex items-center gap-2">
-              <Target className="h-4 w-4" aria-hidden="true" />
-              {tournament.scoringFormat.name}
-            </span>
-          )}
         </div>
       </header>
 
       <section className="mt-10">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xl font-semibold">Clasificación</h2>
-          {leaderboard && leaderboard.entries.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Actualizado a las {timeFormatter.format(new Date(leaderboard.updatedAt))}
-            </p>
-          )}
-        </div>
-
-        {!leaderboard || leaderboard.entries.length === 0 ? (
-          <p className="state-empty mt-6">
-            Todavía no hay puntajes registrados.
-          </p>
+        <h2 className="text-xl font-semibold">Categorías</h2>
+        {!tournament.categories?.length ? (
+          <p className="state-empty mt-6">Las categorías se anunciarán pronto.</p>
         ) : (
-          <div className="mt-6 overflow-x-auto rounded-lg border">
-            <table className="table-base">
-              <caption className="sr-only">
-                Clasificación del torneo {tournament.name}
-              </caption>
-              <thead className="table-head">
-                <tr>
-                  <th scope="col" className="table-th w-16">#</th>
-                  <th scope="col" className="table-th">Arquero</th>
-                  <th scope="col" className="table-th hidden text-right sm:table-cell">Series</th>
-                  <th scope="col" className="table-th hidden text-right sm:table-cell">X</th>
-                  <th scope="col" className="table-th hidden text-right sm:table-cell">10s</th>
-                  <th scope="col" className="table-th text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {leaderboard.entries.map((entry) => (
-                  <tr
-                    key={entry.memberId}
-                    className={cn('table-row', entry.position <= 3 && 'font-medium')}
-                  >
-                    <td className="table-td table-num">
-                      {entry.position}
-                    </td>
-                    <td className="table-td">
-                      <span>{entry.name}</span>
-                      {entry.categories.length > 0 && (
-                        <span className="block text-xs text-muted-foreground sm:ml-2 sm:inline">
-                          {entry.categories.join(' · ')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="table-td table-num hidden text-right sm:table-cell">
-                      {entry.endsShot}
-                    </td>
-                    <td className="table-td table-num hidden text-right sm:table-cell">
-                      {entry.innerTens}
-                    </td>
-                    <td className="table-td table-num hidden text-right sm:table-cell">
-                      {entry.tens}
-                    </td>
-                    <td className="px-4 py-3 text-right text-base font-semibold tabular-nums">
-                      {entry.total}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+            {tournament.categories.map((category) => (
+              <li key={category.id} className="rounded-lg border p-4">
+                <p className="flex items-center gap-2 font-semibold">
+                  {category.mode === 'KNOCKDOWN' ? (
+                    <Swords className="h-4 w-4 text-primary" aria-hidden="true" />
+                  ) : (
+                    <Target className="h-4 w-4 text-primary" aria-hidden="true" />
+                  )}
+                  {category.name}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {MODE_LABEL[category.mode]}
+                  {category.scoringFormat ? ` · ${category.scoringFormat.name}` : ''}
+                </p>
+              </li>
+            ))}
+          </ul>
         )}
+        <p className="mt-6 text-sm text-muted-foreground">
+          Los enfrentamientos se sortean al comenzar el torneo. Desde ese momento, el fixture de
+          cada categoría se publica aquí y se actualiza en vivo.
+        </p>
       </section>
     </div>
   );

@@ -110,10 +110,21 @@ export function RegistrationsList({ registrations }: { registrations: Tournament
       <ul className="divide-y rounded-md border">
         {registrations.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted font-semibold tabular-nums"
+              title="Número de participante"
+            >
+              {r.participant.number}
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="font-medium">{fullName(r)}</p>
+              <p className="font-medium">
+                {fullName(r)}
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  {r.category.name}
+                </span>
+              </p>
               <p className="text-xs text-muted-foreground">
-                Nº {r.member.memberNumber} · {r.member.user.email}
+                Socio Nº {r.member.memberNumber} · {r.member.user.email}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Preinscrito el {dateFormat.format(new Date(r.createdAt))}

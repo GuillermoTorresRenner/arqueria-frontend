@@ -61,8 +61,8 @@ export function TournamentInfoDialog({
               )}
               {tournament.maxParticipants && (
                 <li>
-                  Cupo: {tournament.maxParticipants} arqueros ({tournament._count.registrations}{' '}
-                  {tournament._count.registrations === 1 ? 'inscrito' : 'inscritos'})
+                  Cupo: {tournament.maxParticipants} arqueros ({tournament._count.participants}{' '}
+                  {tournament._count.participants === 1 ? 'inscrito' : 'inscritos'})
                 </li>
               )}
             </ul>

@@ -128,18 +128,25 @@ export type TournamentStatus =
 export interface ScoringZone {
   label: string;
   value: number;
-  isInner?: boolean;
 }
 
+/// Diana: solo zonas. Cuántas flechas se tiran lo define la ronda.
 export interface ScoringFormat {
   id: string;
   name: string;
   description: string | null;
-  arrowsPerEnd: number;
-  endsPerRound: number;
-  maxPerArrow: number;
   zones: ScoringZone[];
   isActive: boolean;
+}
+
+/// SCORE: diana por zonas · KNOCKDOWN: duelos con dianas abatibles
+export type CategoryMode = 'SCORE' | 'KNOCKDOWN';
+
+export interface TournamentCategorySummary {
+  id: string;
+  name: string;
+  mode: CategoryMode;
+  scoringFormat?: Pick<ScoringFormat, 'name' | 'zones'> | null;
 }
 
 export interface Tournament {
@@ -152,27 +159,8 @@ export interface Tournament {
   endsAt: string | null;
   status: TournamentStatus;
   isPublic: boolean;
-  scoringFormat?: ScoringFormat;
-  _count?: { registrations: number; groups?: number; rounds?: number };
-}
-
-export interface LeaderboardEntry {
-  position: number;
-  memberId: string;
-  memberNumber: number;
-  name: string;
-  avatar: string | null;
-  categories: string[];
-  total: number;
-  innerTens: number;
-  tens: number;
-  endsShot: number;
-}
-
-export interface Leaderboard {
-  tournamentId: string;
-  updatedAt: string;
-  entries: LeaderboardEntry[];
+  categories?: TournamentCategorySummary[];
+  _count?: { participants: number; registrations?: number };
 }
 
 // ---------- Actividades ----------
@@ -245,7 +233,9 @@ export interface PublicTournament {
   maxParticipants: number | null;
   fees: Fee[];
   documents: TournamentDocument[];
-  _count: { registrations: number };
+  categories: TournamentCategorySummary[];
+  /// El cupo cuenta arqueros (participantes); registrations, inscripciones por categoría
+  _count: { registrations: number; participants: number };
 }
 
 export type RegistrationStatus = 'PENDING' | 'CONFIRMED' | 'WITHDRAWN';
@@ -271,7 +261,14 @@ export interface MemberActivity extends PublicActivity {
   /// En los torneos el socio ve los datos de transferencia
   tournament: (PublicTournament & { paymentInfo: PaymentInfo | null }) | null;
   /// Su inscripción al torneo, si tiene
-  registration?: { status: RegistrationStatus; createdAt: string; confirmedAt: string | null } | null;
+  registration?: {
+    status: RegistrationStatus;
+    createdAt: string;
+    confirmedAt: string | null;
+    category: { id: string; name: string };
+    /// Número de participante: el mismo en todas sus categorías
+    participant: { number: number };
+  } | null;
 }
 
 export interface Activity extends Omit<PublicActivity, 'tournament'> {
@@ -300,6 +297,8 @@ export interface ActivityAttendee {
 export interface TournamentRegistration {
   id: string;
   status: RegistrationStatus;
+  category: { id: string; name: string };
+  participant: { number: number };
   createdAt: string;
   confirmedAt: string | null;
   confirmedBy: { name: string | null; surname: string | null } | null;
