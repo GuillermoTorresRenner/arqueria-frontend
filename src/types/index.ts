@@ -182,6 +182,8 @@ export interface Tournament {
   status: TournamentStatus;
   isPublic: boolean;
   categories?: TournamentCategorySummary[];
+  /// Actividad del calendario donde se gestionan inscripciones y pagos
+  activity?: { id: string; cancelledAt: string | null } | null;
   _count?: { participants: number; registrations?: number };
 }
 

@@ -330,7 +330,10 @@ export function useSetRegistrationStatus() {
         status: RegistrationStatus;
         emailSent: boolean | null;
       },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['tournaments'] });
+    },
   });
 }
 
@@ -338,7 +341,10 @@ export function useDeleteRegistration() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => (await api.delete(`/activities/registrations/${id}`)).data,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['tournaments'] });
+    },
   });
 }
 

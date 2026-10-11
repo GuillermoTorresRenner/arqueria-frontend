@@ -10,11 +10,14 @@ import {
   useSetUserActive,
   useStaffUsers,
   useUpdateUser,
+  useUserAvatar,
   type StaffRole,
 } from '@/hooks/use-users';
 import { useAuthStore } from '@/features/auth-store';
 import { apiErrorMessage } from '@/lib/api';
 import { Modal } from '@/components/Modal';
+import { AvatarField } from '@/components/AvatarField';
+import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -143,19 +146,24 @@ export function UsersAdminPage() {
                 return (
                   <tr key={user.id} className={user.isActive ? 'table-row' : 'table-row opacity-60'}>
                     <td className="table-td">
-                      <div className="font-medium">
-                        {fullName(user)}
-                        {isMe && <span className="ml-2 text-xs text-muted-foreground">(tú)</span>}
-                      </div>
-                      <div className="break-words text-xs text-muted-foreground">
-                        {user.email.split('@')[0]}@<wbr />
-                        {user.email.split('@').slice(1).join('@')}
-                      </div>
-                      {/* En móvil, rol y estado van bajo el nombre */}
-                      <div className="mt-1.5 flex flex-wrap gap-2 md:hidden">
-                        <Badge variant="secondary" className="sm:hidden">{role?.label}</Badge>
-                        {!user.isActive && <Badge variant="outline">Inactivo</Badge>}
-                        <EmailStatus user={user} />
+                      <div className="flex items-start gap-3">
+                        <UserAvatar user={user} className="mt-0.5 hidden h-9 w-9 sm:inline-flex" />
+                        <div className="min-w-0">
+                          <div className="font-medium">
+                            {fullName(user)}
+                            {isMe && <span className="ml-2 text-xs text-muted-foreground">(tú)</span>}
+                          </div>
+                          <div className="break-words text-xs text-muted-foreground">
+                            {user.email.split('@')[0]}@<wbr />
+                            {user.email.split('@').slice(1).join('@')}
+                          </div>
+                          {/* En móvil, rol y estado van bajo el nombre */}
+                          <div className="mt-1.5 flex flex-wrap gap-2 md:hidden">
+                            <Badge variant="secondary" className="sm:hidden">{role?.label}</Badge>
+                            {!user.isActive && <Badge variant="outline">Inactivo</Badge>}
+                            <EmailStatus user={user} />
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="table-td hidden sm:table-cell">
@@ -299,6 +307,10 @@ function EditUserDialog({
   onClose: () => void;
 }) {
   const update = useUpdateUser();
+  const avatar = useUserAvatar();
+  const setSessionUser = useAuthStore((s) => s.setUser);
+  // La foto se guarda al momento: se muestra la última respuesta del backend
+  const [photo, setPhoto] = useState(user.avatar);
   const form = useForm<EditValues>({
     resolver: zodResolver(profile),
     defaultValues: {
@@ -323,9 +335,29 @@ function EditUserDialog({
       },
     );
 
+  const setAvatar = (file: File | null) =>
+    avatar.mutate(
+      { id: user.id, file },
+      {
+        onSuccess: (updated) => {
+          setPhoto(updated.avatar);
+          // Si se edita a sí mismo, su navbar también cambia
+          if (isMe) setSessionUser(updated);
+          toast.success(file ? 'Foto actualizada' : 'Foto eliminada');
+        },
+        onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo actualizar la foto')),
+      },
+    );
+
   return (
     <Modal title={`Editar a ${fullName(user)}`} onClose={onClose}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <AvatarField
+          user={{ ...user, avatar: photo }}
+          pending={avatar.isPending}
+          onUpload={setAvatar}
+          onRemove={() => setAvatar(null)}
+        />
         <ProfileFields form={form} roleLocked={isMe} />
         <DialogActions onClose={onClose} pending={update.isPending} submitLabel="Guardar" />
       </form>

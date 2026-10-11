@@ -1,9 +1,15 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Radio, Users } from 'lucide-react';
+import { CalendarDays, ChevronRight, Radio, Users } from 'lucide-react';
 import { useAdminTournaments } from '@/hooks/use-tournaments';
+import { useActivityDetail } from '@/hooks/use-activities';
+import { useAuthStore } from '@/features/auth-store';
+import { Modal } from '@/components/Modal';
+import { RegistrationsList } from '@/components/admin/RegistrationsList';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { TournamentStatus } from '@/types';
+import type { Tournament, TournamentStatus } from '@/types';
 
 const STATUS: Record<
   TournamentStatus,
@@ -24,6 +30,9 @@ const dateFormatter = new Intl.DateTimeFormat('es-CL', {
 
 export function TournamentsAdminPage() {
   const { data: tournaments, isLoading } = useAdminTournaments();
+  // Inscripciones y pagos son del ADMIN; el juez solo ve el listado
+  const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN');
+  const [open, setOpen] = useState<Tournament | null>(null);
 
   return (
     <div>
@@ -62,7 +71,7 @@ export function TournamentsAdminPage() {
                   </div>
                   <CardTitle className="mt-2">{tournament.name}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
                   <p className="flex items-center gap-2">
                     <CalendarDays className="h-4 w-4" aria-hidden="true" />
                     {dateFormatter.format(new Date(tournament.startsAt))}
@@ -74,20 +83,71 @@ export function TournamentsAdminPage() {
                       ? ` · ${tournament.categories.map((c) => c.name).join(', ')}`
                       : ''}
                   </p>
-                  {tournament.isPublic && (
-                    <Link
-                      to={`/torneos/${tournament.slug}`}
-                      className="inline-block pt-1 text-primary underline-offset-4 hover:underline"
-                    >
-                      Ver página pública
-                    </Link>
-                  )}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+                    {isAdmin && tournament.activity && (
+                      <Button size="sm" variant="outline" onClick={() => setOpen(tournament)}>
+                        <Users className="h-4 w-4" aria-hidden="true" />
+                        Participantes e inscripciones
+                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    )}
+                    {tournament.isPublic && (
+                      <Link
+                        to={`/torneos/${tournament.slug}`}
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        Ver página pública
+                      </Link>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+      {open?.activity && (
+        <ParticipantsDialog tournament={open} activityId={open.activity.id} onClose={() => setOpen(null)} />
+      )}
     </div>
+  );
+}
+
+/// Participantes numerados del torneo y sus inscripciones por categoría: aquí
+/// se confirma el pago de cada una para dejarla inscrita.
+function ParticipantsDialog({
+  tournament,
+  activityId,
+  onClose,
+}: {
+  tournament: Tournament;
+  activityId: string;
+  onClose: () => void;
+}) {
+  const { data: detail, isLoading } = useActivityDetail(activityId);
+  const registrations = detail?.tournament?.registrations ?? [];
+  const participants = new Set(registrations.map((r) => r.participant.number)).size;
+
+  return (
+    <Modal title={tournament.name} onClose={onClose} className="max-w-3xl">
+      {isLoading || !detail ? (
+        <div className="space-y-3" aria-busy="true">
+          <div className="h-10 skeleton" />
+          <div className="h-40 skeleton" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {participants === 1 ? '1 arquero' : `${participants} arqueros`} ·{' '}
+            {registrations.length === 1 ? '1 inscripción' : `${registrations.length} inscripciones`}.
+            Al llegar el comprobante, confirma el pago de cada categoría para dejarla inscrita.
+          </p>
+          <RegistrationsList
+            registrations={registrations}
+            categories={detail.tournament?.categories ?? []}
+          />
+        </div>
+      )}
+    </Modal>
   );
 }

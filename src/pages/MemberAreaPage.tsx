@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { LogOut, Trophy } from 'lucide-react';
+import { LogOut, Trophy, UserPen } from 'lucide-react';
 import { MemberActivities } from '@/components/activities/MemberActivities';
 import { useAuthStore } from '@/features/auth-store';
 import { useLogout } from '@/hooks/use-auth';
 import { useMyMember } from '@/hooks/use-members';
 import { Seo } from '@/components/Seo';
+import { ProfileDialog } from '@/components/ProfileDialog';
+import { UserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +37,7 @@ export function MemberAreaPage() {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const { data: member, isLoading } = useMyMember(Boolean(user));
+  const [profileOpen, setProfileOpen] = useState(false);
 
   if (!user) return <Navigate to="/login" replace />;
   const status = member ? STATUS_COPY[member.status] : null;
@@ -42,14 +46,23 @@ export function MemberAreaPage() {
     <div className="container max-w-4xl py-10 md:py-14">
       <Seo title="Mi cuenta" noindex />
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Hola, {user.name ?? 'arquero'}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+        <div className="flex items-center gap-4">
+          <UserAvatar user={user} className="h-16 w-16 text-lg" />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Hola, {user.name ?? 'arquero'}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+          </div>
         </div>
-        <Button variant="outline" onClick={() => logout.mutate()} className="gap-2">
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          Salir
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setProfileOpen(true)} className="gap-2">
+            <UserPen className="h-4 w-4" aria-hidden="true" />
+            Mi perfil
+          </Button>
+          <Button variant="outline" onClick={() => logout.mutate()} className="gap-2">
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            Salir
+          </Button>
+        </div>
       </header>
 
       <Card className="mb-8">
@@ -76,6 +89,8 @@ export function MemberAreaPage() {
       </Card>
 
       <MemberActivities />
+
+      {profileOpen && <ProfileDialog onClose={() => setProfileOpen(false)} />}
 
       <h2 className="mb-4 mt-12 text-lg font-semibold">Muy pronto</h2>
       <div className="grid gap-4 sm:grid-cols-2">

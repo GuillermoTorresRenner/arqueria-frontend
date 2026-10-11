@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
+import { UserAvatar } from '@/components/UserAvatar';
 import { LogoEmblem } from '@/components/Logo';
 import { useAuthStore } from '@/features/auth-store';
 
@@ -46,13 +47,21 @@ export function SiteHeader() {
             </NavLink>
           ))}
           <ThemeToggle className="ml-1" />
-          <Button asChild size="sm" className="ml-1">
-            <Link to={account.to}>{account.label}</Link>
+          <Button asChild size="sm" className={cn('ml-1', user && 'pl-1')}>
+            <Link to={account.to}>
+              {user && <UserAvatar user={user} className="h-6 w-6 text-[10px]" />}
+              {account.label}
+            </Link>
           </Button>
         </nav>
 
         <div className="flex items-center gap-1 md:hidden">
           <ThemeToggle />
+          {user && (
+            <Link to={account.to} aria-label="Mi cuenta" className="rounded-full p-1">
+              <UserAvatar user={user} />
+            </Link>
+          )}
           <Button
             variant="ghost"
             size="icon"

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, Outlet, Link, Navigate } from 'react-router-dom';
 import { CalendarDays, FileText, LogOut, ShieldCheck, Trophy, Users } from 'lucide-react';
 import { useAuthStore } from '@/features/auth-store';
@@ -7,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 import { Seo } from './Seo';
 import { LogoEmblem } from '@/components/Logo';
+import { UserAvatar } from '@/components/UserAvatar';
+import { ProfileDialog } from '@/components/ProfileDialog';
 
 const NAV = [
   { to: '/admin', label: 'Contenido', icon: FileText, end: true },
@@ -21,6 +24,7 @@ const NAV = [
 export function AdminLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Guarda de conveniencia: la autorización real la aplica el backend en cada
   // endpoint. Esto solo evita mostrar un panel que no se podría usar.
@@ -41,12 +45,21 @@ export function AdminLayout() {
             </span>
           </Link>
           <div className="flex items-center gap-1 sm:gap-3">
-            <span className="hidden text-sm text-muted-foreground sm:inline">
-              {[user.name, user.surname].filter(Boolean).join(' ') || user.email}
-              <span className="ml-2 text-xs opacity-70">
-                {user.role === 'ADMIN' ? 'Administrador' : 'Juez'}
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              className="flex items-center gap-2 rounded-full p-0.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:rounded-md sm:px-2 sm:py-1 sm:hover:bg-secondary"
+              aria-label="Mi perfil"
+              title="Mi perfil"
+            >
+              <UserAvatar user={user} />
+              <span className="hidden sm:inline">
+                {[user.name, user.surname].filter(Boolean).join(' ') || user.email}
+                <span className="ml-2 text-xs opacity-70">
+                  {user.role === 'ADMIN' ? 'Administrador' : 'Juez'}
+                </span>
               </span>
-            </span>
+            </button>
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -98,6 +111,8 @@ export function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      {profileOpen && <ProfileDialog onClose={() => setProfileOpen(false)} />}
     </div>
   );
 }

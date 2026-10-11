@@ -8,6 +8,7 @@ import { PublicLayout } from '@/components/PublicLayout';
 import { HomePage } from '@/pages/HomePage';
 import { TournamentsPage } from '@/pages/TournamentsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { useRefreshSession } from '@/hooks/use-auth';
 
 // El panel y el marcador en vivo (que arrastra socket.io) se cargan aparte:
 // quien solo visita la landing no debería descargarlos.
@@ -80,6 +81,7 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  useRefreshSession();
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
