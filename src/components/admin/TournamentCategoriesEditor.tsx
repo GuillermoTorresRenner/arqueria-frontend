@@ -208,13 +208,6 @@ export function TournamentCategoriesEditor({
                   onChange={(shootOffArrows) => update(c.key, { shootOffArrows })}
                   hint="Se repite hasta que alguien gane."
                 />
-                <NumberField
-                  id={id('playoff')}
-                  label="Flechas en la minironda de perdedores"
-                  value={c.playoffArrows}
-                  onChange={(playoffArrows) => update(c.key, { playoffArrows })}
-                  hint="Si empatan los mejores perdedores de una ronda impar."
-                />
                 <div className="space-y-1">
                   <Label htmlFor={id('judge')} className="text-xs">
                     Juez de la categoría

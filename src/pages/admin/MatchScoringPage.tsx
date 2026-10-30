@@ -29,7 +29,7 @@ export function MatchScoringPage() {
   if (isLoading) return <div className="h-96 skeleton" aria-busy="true" />;
   if (isError || !match) return <p className="state-empty">No se pudo cargar el enfrentamiento.</p>;
 
-  const race = match.category.mode === 'KNOCKDOWN' && match.kind !== 'PLAYOFF';
+  const race = match.category.mode === 'KNOCKDOWN';
   const winner = match.entries.find((e) => e.id === match.winnerEntryId);
   const locked = !match.canScore;
 
@@ -80,7 +80,7 @@ export function MatchScoringPage() {
   );
 }
 
-// ---------- Puntaje (y minirondas) ----------
+// ---------- Puntaje ----------
 
 /// Clases completas: Tailwind no genera las que se arman en tiempo de ejecución
 const COLUMNS: Record<number, string> = {

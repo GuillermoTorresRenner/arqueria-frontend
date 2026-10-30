@@ -9,8 +9,8 @@ import type {
 } from '@/types';
 
 /**
- * Fixture de una categoría: una columna por ronda, con sus enfrentamientos,
- * quién quedó sin rival y los extra (minironda, repechaje, 3.er lugar).
+ * Fixture de una categoría: una columna por ronda, con sus enfrentamientos
+ * en orden de cuadro, los que pasan por bye y el duelo por el 3.er lugar.
  * Se desplaza en horizontal en pantallas chicas.
  */
 export function BracketView({
@@ -42,22 +42,18 @@ export function BracketView({
             <li key={round.id} className="flex w-64 shrink-0 snap-start flex-col">
               <RoundHeader round={round} />
               <div className="flex flex-1 flex-col justify-around gap-3">
-                {round.matches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    unit={unit}
-                    highlight={highlight}
-                    onClick={onMatchClick ? () => onMatchClick(match) : undefined}
-                  />
-                ))}
-                {round.bye && !round.matches.some((m) => m.kind === 'REPECHAGE') && (
-                  <ByeCard bye={round.bye} highlight={highlight} />
-                )}
-                {round.awaitingDraw && (
-                  <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
-                    {round.entrantsCount} arqueros: falta sortear quién queda sin rival.
-                  </p>
+                {roundSlots(round).map((slot) =>
+                  'bye' in slot ? (
+                    <ByeCard key={slot.bye.participantId} bye={slot.bye} highlight={highlight} />
+                  ) : (
+                    <MatchCard
+                      key={slot.match.id}
+                      match={slot.match}
+                      unit={unit}
+                      highlight={highlight}
+                      onClick={onMatchClick ? () => onMatchClick(slot.match) : undefined}
+                    />
+                  ),
                 )}
               </div>
             </li>
@@ -66,6 +62,27 @@ export function BracketView({
       </div>
     </div>
   );
+}
+
+/// Byes y enfrentamientos en orden de cuadro: cada bye ocupa un lugar y cada
+/// enfrentamiento, dos seguidos. La final y el 3.er lugar van al final.
+function roundSlots(round: BracketRoundView) {
+  const regular = round.matches
+    .filter((m) => m.kind === 'REGULAR')
+    .sort((a, b) => a.order - b.order);
+  const slots: ({ bye: BracketParticipant } | { match: MatchView })[] = [];
+  for (let i = 0, k = 0; i < round.entrants.length; ) {
+    const entrant = round.entrants[i];
+    if (round.byeIds.includes(entrant.participantId)) {
+      slots.push({ bye: entrant });
+      i += 1;
+    } else {
+      if (regular[k]) slots.push({ match: regular[k] });
+      k += 1;
+      i += 2;
+    }
+  }
+  return [...slots, ...round.matches.filter((m) => m.kind !== 'REGULAR').map((match) => ({ match }))];
 }
 
 function RoundHeader({ round }: { round: BracketRoundView }) {
@@ -182,7 +199,7 @@ function ByeCard({ bye, highlight }: { bye: BracketParticipant; highlight?: numb
       </p>
       <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
         <UserRound className="h-3 w-3" aria-hidden="true" />
-        Sin rival: espera al mejor perdedor
+        Bye: pasa directo a la ronda siguiente
       </p>
     </div>
   );

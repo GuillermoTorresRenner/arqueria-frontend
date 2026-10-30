@@ -91,14 +91,14 @@ export interface DrawInput {
   method: 'ALGORITHM' | 'MANUAL';
   seed?: string;
   pairs?: [number, number][];
-  bye?: number | null;
+  byes?: number[];
 }
 
 export const useDraw = () =>
   useBracketMutation(
     async ({ categoryId, ...body }: DrawInput) =>
       (
-        await api.post<{ seed: string | null; pairs: [number, number][]; bye: number | null }>(
+        await api.post<{ seed: string | null; pairs: [number, number][]; byes: number[] }>(
           `/brackets/categories/${categoryId}/draw`,
           body,
         )

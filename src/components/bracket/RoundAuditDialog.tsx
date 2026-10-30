@@ -99,7 +99,7 @@ export function RoundAuditDialog({
           <p className="rounded-md bg-secondary/40 p-3 text-xs">
             <strong>Sorteo</strong> {draw.method === 'ALGORITHM' ? 'del sistema' : 'por tómbola'} ·{' '}
             {draw.result.pairs.map(([a, b]) => `${a} vs ${b}`).join(' · ')}
-            {draw.result.bye !== null && ` · sin rival: n.º ${draw.result.bye}`}
+            {draw.result.byes.length > 0 && ` · bye: ${draw.result.byes.map((n) => `n.º ${n}`).join(', ')}`}
             {draw.seed && ` · semilla «${draw.seed}»`}
             {draw.drawnBy && ` · ${personName(draw.drawnBy)}`}, {dateTime.format(new Date(draw.createdAt))}
           </p>
@@ -141,7 +141,7 @@ function MatchAudit({ match, mode }: { match: MatchView; mode: CategoryMode }) {
     (latest, s) => (s.updatedAt && (!latest || s.updatedAt > latest) ? s.updatedAt : latest),
     null,
   );
-  const race = mode === 'KNOCKDOWN' && match.kind !== 'PLAYOFF';
+  const race = mode === 'KNOCKDOWN';
 
   return (
     <li className="rounded-md border">

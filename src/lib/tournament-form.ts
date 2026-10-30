@@ -22,7 +22,6 @@ export interface CategoryFormState {
   arrowsPerArcher: string;
   targetsToWin: string;
   shootOffArrows: string;
-  playoffArrows: string;
   judgeId: string;
   /// Con inscritos no se puede quitar; con cuadro no cambia de modalidad
   registrations: number;
@@ -41,7 +40,6 @@ export function newCategory(config?: Partial<TournamentCategoryConfig>): Categor
     arrowsPerArcher: String(config?.arrowsPerArcher ?? 3),
     targetsToWin: String(config?.targetsToWin ?? 3),
     shootOffArrows: String(config?.shootOffArrows ?? 1),
-    playoffArrows: String(config?.playoffArrows ?? 1),
     judgeId: '',
     registrations: 0,
     hasBracket: false,

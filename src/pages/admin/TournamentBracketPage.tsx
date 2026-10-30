@@ -13,7 +13,7 @@ import { apiErrorMessage } from '@/lib/api';
 import { MODE_LABEL, personName } from '@/lib/brackets';
 import { cn } from '@/lib/utils';
 import { BracketView } from '@/components/bracket/BracketView';
-import { ByeDraw, FirstRoundDraw } from '@/components/bracket/DrawPanel';
+import { FirstRoundDraw } from '@/components/bracket/DrawPanel';
 import { RoundAuditDialog } from '@/components/bracket/RoundAuditDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -99,13 +99,13 @@ function CategoryPanel({ category }: { category: StaffCategoryBracket }) {
   const canUndo =
     category.canManage &&
     last &&
-    !last.matches.some((m) => m.status !== 'PENDING') &&
-    !(last.number > 1 && last.awaitingDraw);
+    last.number === 1 &&
+    !last.matches.some((m) => m.status !== 'PENDING');
 
   const undo = async () => {
     const ok = await confirm({
-      title: '¿Deshacer el último sorteo?',
-      description: 'Los enfrentamientos de esa ronda se borran y se puede sortear de nuevo.',
+      title: '¿Deshacer el sorteo?',
+      description: 'Los enfrentamientos de la primera ronda se borran y se puede sortear de nuevo.',
       confirmLabel: 'Deshacer sorteo',
       tone: 'danger',
     });
@@ -143,10 +143,6 @@ function CategoryPanel({ category }: { category: StaffCategoryBracket }) {
         )
       ) : (
         <>
-          {last?.awaitingDraw && category.canManage && (
-            <ByeDraw categoryId={category.id} roundLabel={last.label} entrants={last.entrants} />
-          )}
-
           <ul className="flex flex-wrap gap-2">
             {category.rounds.map((round) => (
               <li key={round.id}>

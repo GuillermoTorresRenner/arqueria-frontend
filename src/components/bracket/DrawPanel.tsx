@@ -4,7 +4,7 @@ import { Dices, Ticket, TriangleAlert } from 'lucide-react';
 import { useDraw } from '@/hooks/use-brackets';
 import { useConfirm } from '@/features/confirm-store';
 import { apiErrorMessage } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { bracketSize, byeCount } from '@/lib/brackets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,8 +59,10 @@ function MethodPicker({ value, onChange }: { value: Method; onChange: (m: Method
 }
 
 /**
- * Sorteo de la primera ronda: entran los inscritos con el pago confirmado.
- * Con la tómbola se anota qué número enfrenta a cuál y quién quedó sin rival.
+ * Sorteo de la primera ronda: entran los inscritos con el pago confirmado. Si
+ * no son potencia de 2, los que faltan para completar el cuadro pasan por bye
+ * directo a la segunda ronda. Con la tómbola se anota qué número enfrenta a
+ * cuál y quiénes pasan por bye.
  */
 export function FirstRoundDraw({
   categoryId,
@@ -78,13 +80,15 @@ export function FirstRoundDraw({
   const [method, setMethod] = useState<Method>('ALGORITHM');
   const [seed, setSeed] = useState('');
   const numbers = confirmed.map((p) => p.number);
-  const odd = numbers.length % 2 === 1;
+  const size = bracketSize(numbers.length);
+  const byeTotal = byeCount(numbers.length);
   const [pairs, setPairs] = useState<[string, string][]>(() =>
-    Array.from({ length: Math.floor(numbers.length / 2) }, () => ['', ''] as [string, string]),
+    Array.from({ length: (numbers.length - byeTotal) / 2 }, () => ['', ''] as [string, string]),
   );
-  const [bye, setBye] = useState('');
+  const [byes, setByes] = useState<string[]>(() => Array.from({ length: byeTotal }, () => ''));
+  const byeText = byeTotal === 1 ? '1 pasa' : `${byeTotal} pasan`;
 
-  const used = new Set([...pairs.flat(), bye].filter(Boolean));
+  const used = new Set([...pairs.flat(), ...byes].filter(Boolean));
   const options = (current: string) =>
     numbers.filter((n) => String(n) === current || !used.has(String(n)));
   const complete = used.size === numbers.length;
@@ -94,7 +98,7 @@ export function FirstRoundDraw({
       title: `¿Sortear ${categoryName}?`,
       description:
         method === 'ALGORITHM'
-          ? `Se emparejan al azar los ${numbers.length} inscritos confirmados${odd ? ' y uno queda sin rival' : ''}. Quien se inscriba o confirme el pago después ya no entra.`
+          ? `Se emparejan al azar los ${numbers.length} inscritos confirmados${byeTotal ? ` y ${byeText} por bye a la segunda ronda` : ''}. Quien se inscriba o confirme el pago después ya no entra.`
           : 'Se registra el sorteo de la tómbola tal como lo anotaste. Quien se inscriba o confirme el pago después ya no entra.',
       confirmLabel: 'Registrar sorteo',
     });
@@ -106,13 +110,13 @@ export function FirstRoundDraw({
             categoryId,
             method,
             pairs: pairs.map(([a, b]) => [Number(a), Number(b)] as [number, number]),
-            bye: odd ? Number(bye) : null,
+            byes: byes.map(Number),
           },
       {
         onSuccess: (r) =>
           toast.success('Sorteo registrado', {
             description: `${r.pairs.map(([a, b]) => `${a} vs ${b}`).join(' · ')}${
-              r.bye ? ` · sin rival: n.º ${r.bye}` : ''
+              r.byes.length ? ` · bye: ${r.byes.map((n) => `n.º ${n}`).join(', ')}` : ''
             }`,
             duration: 10000,
           }),
@@ -136,7 +140,9 @@ export function FirstRoundDraw({
         <h3 className="font-semibold">Sorteo de la primera ronda</h3>
         <p className="text-sm text-muted-foreground">
           {numbers.length} inscritos con el pago confirmado
-          {odd && ': al ser impares, uno queda sin rival y se enfrenta al mejor perdedor'}.
+          {byeTotal > 0 &&
+            `: el cuadro es de ${size}, así que ${byeText} por bye directo a la segunda ronda`}
+          .
         </p>
       </div>
       {pendingCount > 0 && (
@@ -202,18 +208,30 @@ export function FirstRoundDraw({
               </li>
             ))}
           </ol>
-          {odd && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="whitespace-nowrap text-xs font-medium">Sin rival</span>
-              <select aria-label="Número sin rival" value={bye} onChange={(e) => setBye(e.target.value)} className={SELECT}>
-                <option value="">N.º</option>
-                {options(bye).map((n) => (
-                  <option key={n} value={n}>
-                    {n} · {confirmed.find((p) => p.number === n)?.name}
-                  </option>
+          {byeTotal > 0 && (
+            <>
+              <p className="pt-2 text-xs font-medium">Pasan por bye a la segunda ronda</p>
+              <ol className="grid gap-2 sm:grid-cols-2">
+                {byes.map((value, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <span className="w-6 text-right text-xs text-muted-foreground">{i + 1}.</span>
+                    <select
+                      aria-label={`Bye ${i + 1}`}
+                      value={value}
+                      onChange={(e) => setByes(byes.map((b, j) => (j === i ? e.target.value : b)))}
+                      className={SELECT}
+                    >
+                      <option value="">N.º</option>
+                      {options(value).map((n) => (
+                        <option key={n} value={n}>
+                          {n} · {confirmed.find((p) => p.number === n)?.name}
+                        </option>
+                      ))}
+                    </select>
+                  </li>
                 ))}
-              </select>
-            </div>
+              </ol>
+            </>
           )}
         </div>
       )}
@@ -222,67 +240,6 @@ export function FirstRoundDraw({
         <Button onClick={submit} disabled={draw.isPending || (method === 'MANUAL' && !complete)}>
           {method === 'ALGORITHM' ? <Dices className="h-4 w-4" aria-hidden="true" /> : <Ticket className="h-4 w-4" aria-hidden="true" />}
           {draw.isPending ? 'Sorteando…' : method === 'ALGORITHM' ? 'Sortear' : 'Registrar la tómbola'}
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-/// Ronda impar posterior: quién queda sin rival (y enfrenta al mejor perdedor)
-export function ByeDraw({
-  categoryId,
-  roundLabel,
-  entrants,
-}: {
-  categoryId: string;
-  roundLabel: string;
-  entrants: BracketParticipant[];
-}) {
-  const draw = useDraw();
-  const [method, setMethod] = useState<Method>('ALGORITHM');
-  const [bye, setBye] = useState('');
-
-  const submit = () =>
-    draw.mutate(
-      method === 'ALGORITHM' ? { categoryId, method } : { categoryId, method, bye: Number(bye) },
-      {
-        onSuccess: (r) => toast.success(`Sin rival en ${roundLabel}: n.º ${r.bye}`),
-        onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo sortear')),
-      },
-    );
-
-  return (
-    <section className="space-y-3 rounded-lg border border-primary/40 bg-primary/5 p-4">
-      <div>
-        <h3 className="font-semibold">{roundLabel}: falta sortear quién queda sin rival</h3>
-        <p className="text-sm text-muted-foreground">
-          Pasaron {entrants.length} arqueros. Uno queda sin rival y luego enfrenta al mejor
-          perdedor de la ronda; el resto se cruza en el orden del cuadro.
-        </p>
-      </div>
-      <MethodPicker value={method} onChange={setMethod} />
-      {method === 'MANUAL' && (
-        <div className="flex flex-wrap gap-2">
-          {entrants.map((p) => (
-            <button
-              key={p.participantId}
-              type="button"
-              onClick={() => setBye(String(p.number))}
-              className={cn(
-                'flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-sm',
-                bye === String(p.number) && 'border-primary bg-primary/10',
-              )}
-              aria-pressed={bye === String(p.number)}
-            >
-              <NumberBadge number={p.number} strong={bye === String(p.number)} />
-              {p.name}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="flex justify-end">
-        <Button onClick={submit} disabled={draw.isPending || (method === 'MANUAL' && !bye)}>
-          {draw.isPending ? 'Sorteando…' : method === 'ALGORITHM' ? 'Sortear' : 'Registrar'}
         </Button>
       </div>
     </section>

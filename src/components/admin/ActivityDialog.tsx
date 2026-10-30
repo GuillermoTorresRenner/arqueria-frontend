@@ -250,8 +250,7 @@ function ActivityForm({
       const arrowsPerArcher = count(c.arrowsPerArcher);
       const targetsToWin = count(c.targetsToWin);
       const shootOffArrows = count(c.shootOffArrows);
-      const playoffArrows = count(c.playoffArrows);
-      if (!arrowsPerArcher || !targetsToWin || !shootOffArrows || !playoffArrows) {
+      if (!arrowsPerArcher || !targetsToWin || !shootOffArrows) {
         return `Revisa los números de «${name}»: deben ser enteros mayores que cero`;
       }
       categories.push({
@@ -262,7 +261,6 @@ function ActivityForm({
         arrowsPerArcher,
         targetsToWin,
         shootOffArrows,
-        playoffArrows,
         judgeId: c.judgeId && t.judgeIds.includes(c.judgeId) ? c.judgeId : null,
       });
     }

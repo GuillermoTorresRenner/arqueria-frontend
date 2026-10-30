@@ -160,8 +160,6 @@ export interface TournamentCategoryConfig {
   targetsToWin: number;
   /// Flechas por arquero en cada tanda de desempate
   shootOffArrows: number;
-  /// Flechas por arquero en la minironda entre perdedores empatados
-  playoffArrows: number;
 }
 
 export interface TournamentCategory extends TournamentCategoryConfig {
@@ -382,7 +380,7 @@ export interface ActivitiesData {
 
 // ---------- Cuadro de eliminación ----------
 
-export type MatchKind = 'REGULAR' | 'REPECHAGE' | 'PLAYOFF' | 'THIRD_PLACE' | 'FINAL';
+export type MatchKind = 'REGULAR' | 'THIRD_PLACE' | 'FINAL';
 export type MatchStatus = 'PENDING' | 'IN_PROGRESS' | 'FINISHED';
 export type ShotPhase = 'REGULAR' | 'SHOOT_OFF';
 
@@ -432,7 +430,7 @@ export interface BracketDraw {
   id: string;
   method: 'ALGORITHM' | 'MANUAL';
   seed: string | null;
-  result: { pairs: [number, number][]; bye: number | null };
+  result: { pairs: [number, number][]; byes: number[] };
   drawnBy: { name: string | null; surname: string | null } | null;
   createdAt: string;
 }
@@ -443,15 +441,13 @@ export interface BracketRoundView {
   /// «Final», «Semifinal», «Cuartos de final»…
   label: string;
   entrantsCount: number;
-  /// En orden de cuadro; en una ronda impar en espera, entre quiénes se sortea
+  /// En orden de cuadro: cada bye ocupa un lugar y cada enfrentamiento, dos
   entrants: BracketParticipant[];
-  byeId: string | null;
-  /// Quien quedó sin rival y espera al mejor perdedor
-  bye: BracketParticipant | null;
+  /// Primera ronda: quienes pasan directo a la segunda (sistema bye)
+  byeIds: string[];
+  byes: BracketParticipant[];
   arrowsPerArcher: number;
   targetsToWin: number;
-  /// Ronda impar a la espera de sortear quién queda sin rival
-  awaitingDraw: boolean;
   complete: boolean;
   closedAt: string | null;
   closedBy?: { name: string | null; surname: string | null } | null;
@@ -467,7 +463,6 @@ export interface CategoryBracket {
   arrowsPerArcher: number;
   targetsToWin: number;
   shootOffArrows: number;
-  playoffArrows: number;
   judge: { id: string; name: string | null; surname: string | null } | null;
   status: 'NOT_DRAWN' | 'IN_PROGRESS' | 'FINISHED';
   podium: {
