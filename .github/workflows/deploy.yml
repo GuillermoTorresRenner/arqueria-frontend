@@ -7,7 +7,7 @@ on:
       - main
 
 # Entorno único: `main` despliega sobre la infraestructura que antes era de QA
-# (rutas abma/qa/*, secret QA_ENV_VARS, dominios galadhrym.cl / api.galadhrym.cl, y en el compose
+# (rutas abma/qa/*, secret PROD_ENV_VARS, dominios galadhrym.cl / api.galadhrym.cl, y en el compose
 # el proyecto abma_qa, la red abma_internal_net_qa y el volumen abma_qa_postgres_data).
 # Se mantiene así a propósito para no migrar BD, volúmenes ni DNS.
 env:
@@ -21,6 +21,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validar secret de entorno
+        # Si el secret está vacío o no existe, GitHub lo entrega como cadena
+        # vacía y el deploy tiraba los contenedores (PREFIX vacío => "_db").
+        # Se corta aquí, antes de construir nada ni tocar la VPS.
+        env:
+          ENV_VARS: ${{ secrets.PROD_ENV_VARS }}
+        run: |
+          for k in PREFIX VITE_API_URL VITE_SOCKET_URL; do
+            printf '%s\n' "$ENV_VARS" | grep -qE "^[[:space:]]*$k=.+" || {
+              echo "::error::El secret PROD_ENV_VARS está vacío o le falta $k"; exit 1; }
+          done
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -38,7 +50,7 @@ jobs:
         # El secret entra como variable de entorno y se escribe literal: con
         # echo "${{ secrets... }}" bash interpretaba `comillas invertidas` y $.
         env:
-          ENV_VARS: ${{ secrets.QA_ENV_VARS }}
+          ENV_VARS: ${{ secrets.PROD_ENV_VARS }}
         run: |
           echo "DOCKERHUB_REPOSITORY=$DOCKERHUB_REPOSITORY" > .env
           printf '%s\n' "$ENV_VARS" >> .env
