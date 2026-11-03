@@ -2,7 +2,7 @@ name: 'abma_qa_front'
 
 services:
   frontend:
-    image: 'lanek/abma-frontend:test'
+    image: 'lanek/abma-frontend:latest'
     container_name: '${PREFIX}_frontend'
     restart: unless-stopped
     env_file:
